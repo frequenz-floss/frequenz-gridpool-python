@@ -309,7 +309,7 @@ class MicrogridConfig:
         return mgrids
 
     @classmethod
-    def load_from_file(cls, config_path: Path) -> dict[int, Self]:
+    def load_from_file(cls, config_path: Path) -> dict[str, Self]:
         """
         Load and validate configuration settings from a TOML file.
 
