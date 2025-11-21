@@ -9,8 +9,8 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
-from frequenz.data.microgrid import MicrogridConfig
-from frequenz.data.microgrid.config import ComponentTypeConfig
+from frequenz.gridpool import MicrogridConfig
+from frequenz.gridpool._microgrid_config import ComponentTypeConfig
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
