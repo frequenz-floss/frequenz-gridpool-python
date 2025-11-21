@@ -28,12 +28,16 @@ classifiers = [
 requires-python = ">= 3.11, < 4"
 # TODO(cookiecutter): Remove and add more dependencies if appropriate
 dependencies = [
-  "marshmallow-dataclass>=8.7.1,<9",
+  "marshmallow-dataclass >= 8.7.1, < 9",
+  "asyncclick >= 8.3.0.4, < 9",
   "typing-extensions >= 4.14.1, < 5",
   "frequenz-microgrid-component-graph >= 0.2.0, < 0.3",
   "frequenz-client-assets >= 0.2.0, < 0.3",
 ]
 dynamic = ["version"]
+
+[project.scripts]
+gridpool-cli = "frequenz.gridpool.cli.__main__:main"
 
 [[project.authors]]
 name = "Frequenz Energy-as-a-Service GmbH"
