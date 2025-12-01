@@ -10,7 +10,7 @@
 
 ## New Features
 
-* Adds a configuration class for microgrids copied from `frequenz-floss/lib-notebooks`.
+* Expose microgrid config `Metadata`.
 
 ## Bug Fixes
 
