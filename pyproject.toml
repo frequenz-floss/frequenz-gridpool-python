@@ -59,7 +59,7 @@ dev-mkdocs = [
   "frequenz-repo-config[lib] == 0.13.6",
 ]
 dev-mypy = [
-  "mypy == 1.18.2",
+  "mypy == 1.19.0",
   "types-Markdown == 3.10.0.20251106",
   # For checking the noxfile, docs/ script, and tests
   "frequenz-gridpool[dev-mkdocs,dev-noxfile,dev-pytest]",
