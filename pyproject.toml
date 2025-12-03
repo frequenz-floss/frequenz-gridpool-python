@@ -15,7 +15,6 @@ description = "High-level interface to grid pools for the Frequenz platform."
 readme = "README.md"
 license = { text = "MIT" }
 keywords = ["frequenz", "python", "lib", "library", "gridpool"]
-# TODO(cookiecutter): Remove and add more classifiers if appropriate
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -26,7 +25,6 @@ classifiers = [
   "Typing :: Typed",
 ]
 requires-python = ">= 3.11, < 4"
-# TODO(cookiecutter): Remove and add more dependencies if appropriate
 dependencies = [
   "marshmallow-dataclass >= 8.7.1, < 9",
   "asyncclick >= 8.3.0.4, < 9",
@@ -43,7 +41,6 @@ gridpool-cli = "frequenz.gridpool.cli.__main__:main"
 name = "Frequenz Energy-as-a-Service GmbH"
 email = "floss@frequenz.com"
 
-# TODO(cookiecutter): Remove and add more optional dependencies if appropriate
 [project.optional-dependencies]
 dev-flake8 = [
   "flake8 == 7.3.0",
