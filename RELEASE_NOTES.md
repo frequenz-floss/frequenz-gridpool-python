@@ -10,9 +10,7 @@
 
 ## New Features
 
-* Expose microgrid config `Metadata`.
-
-* This introduces the `ComponentGraphGenerator`, that uses the assets API to fetch assets for a specified microgrid, and builds a component graph for it, from which various formulas for the microgrid can be generated.
+<!-- Here goes the main new features and examples or instructions on how to use them -->
 
 ## Bug Fixes
 
