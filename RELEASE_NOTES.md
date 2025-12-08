@@ -10,6 +10,8 @@
 
 ## New Features
 
+* Add CLI tool to print formulas from assets API component graph.
+
 <!-- Here goes the main new features and examples or instructions on how to use them -->
 
 ## Bug Fixes
