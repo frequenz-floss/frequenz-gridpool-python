@@ -41,8 +41,8 @@ class ComponentTypeConfig:
     def __post_init__(self) -> None:
         """Set the default formula if none is provided."""
         self.formula = self.formula or {}
-        if "AC_ACTIVE_POWER" not in self.formula:
-            self.formula["AC_ACTIVE_POWER"] = "+".join(
+        if "AC_POWER_ACTIVE" not in self.formula:
+            self.formula["AC_POWER_ACTIVE"] = "+".join(
                 [f"#{cid}" for cid in self._default_cids()]
             )
 

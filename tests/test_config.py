@@ -16,7 +16,7 @@ VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
         "meta": {"name": "Test Grid", "gid": 1, "microgrid_id": 1},
         "ctype": {
-            "pv": {"meter": [101, 102], "formula": {"AC_ACTIVE_POWER": "#12+#23"}},
+            "pv": {"meter": [101, 102], "formula": {"AC_POWER_ACTIVE": "#12+#23"}},
             "battery": {
                 "inverter": [201, 202, 203],
                 "component": [301, 302, 303, 304, 305, 306],
@@ -104,7 +104,7 @@ def test_microgrid_config_component_type_ids(
 
 def test_microgrid_config_formula(valid_microgrid_config: MicrogridConfig) -> None:
     """Test retrieval of formula for a given component type and metric."""
-    assert valid_microgrid_config.formula("pv", "AC_ACTIVE_POWER") == "#12+#23"
+    assert valid_microgrid_config.formula("pv", "AC_POWER_ACTIVE") == "#12+#23"
 
     with pytest.raises(ValueError):
         valid_microgrid_config.formula("pv", "INVALID_METRIC")
