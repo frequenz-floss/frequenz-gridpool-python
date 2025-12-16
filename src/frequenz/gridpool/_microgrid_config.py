@@ -41,10 +41,23 @@ class ComponentTypeConfig:
     def __post_init__(self) -> None:
         """Set the default formula if none is provided."""
         self.formula = self.formula or {}
-        if "AC_POWER_ACTIVE" not in self.formula:
-            self.formula["AC_POWER_ACTIVE"] = "+".join(
-                [f"#{cid}" for cid in self._default_cids()]
+        if "AC_ACTIVE_POWER" in self.formula:
+            _logger.warning(
+                "ComponentTypeConfig: 'AC_ACTIVE_POWER' formula is deprecated, "
+                "please use 'AC_POWER_ACTIVE' instead."
             )
+
+        if "AC_POWER_ACTIVE" not in self.formula:
+            if "AC_ACTIVE_POWER" in self.formula:
+                self.formula["AC_POWER_ACTIVE"] = self.formula["AC_ACTIVE_POWER"]
+            else:
+                _logger.warning(
+                    "ComponentTypeConfig: No formula provided for 'AC_POWER_ACTIVE', "
+                    "using default summation formula."
+                )
+                self.formula["AC_POWER_ACTIVE"] = "+".join(
+                    [f"#{cid}" for cid in self._default_cids()]
+                )
 
     def cids(self, metric: str = "") -> list[int]:
         """Get component IDs for this component.
