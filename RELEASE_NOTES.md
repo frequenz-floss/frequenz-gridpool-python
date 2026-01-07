@@ -6,7 +6,7 @@
 
 ## Upgrading
 
-* Add back support for old active power formula config `AC_ACTIVE_POWER`.
+* The minimum required version of `frequenz-microgrid-component-graph` is now `v0.3.4`.
 
 ## New Features
 
