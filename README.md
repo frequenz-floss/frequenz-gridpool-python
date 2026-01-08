@@ -18,6 +18,50 @@ The following platforms are officially supported (tested):
 - **Operating System:** Ubuntu Linux 20.04
 - **Architectures:** amd64, arm64
 
+## CLI
+
+This package ships the `gridpool-cli` command with two subcommands.
+
+### Setup
+
+Set the Assets API credentials before running the CLI:
+
+```bash
+export ASSETS_API_URL="grpc://..."
+export ASSETS_API_AUTH_KEY="..."
+export ASSETS_API_SIGN_SECRET="..."
+```
+
+### Print component formulas
+
+```bash
+gridpool-cli print-formulas <microgrid_id>
+```
+
+Optional prefix formatting:
+
+```bash
+gridpool-cli print-formulas <microgrid_id> --prefix "{microgrid_id}.{component}"
+```
+
+### Render component graph
+
+Rendering requires optional dependencies. Install with:
+
+```bash
+pip install frequenz-gridpool[render-graph]
+```
+
+```bash
+gridpool-cli render-graph <microgrid_id>
+```
+
+To save without opening a window:
+
+```bash
+gridpool-cli render-graph <microgrid_id> --no-show --output component_graph.png
+```
+
 ## Contributing
 
 If you want to know how to build this project and contribute to it, please
