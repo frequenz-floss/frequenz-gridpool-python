@@ -10,7 +10,9 @@
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+* Added `gridpool-cli render-graph` to visualize microgrid component graphs using the
+  Assets API credentials (`ASSETS_API_URL`, `ASSETS_API_AUTH_KEY`, and
+  `ASSETS_API_SIGN_SECRET`).
 
 ## Bug Fixes
 

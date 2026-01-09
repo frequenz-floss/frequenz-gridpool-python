@@ -42,6 +42,11 @@ name = "Frequenz Energy-as-a-Service GmbH"
 email = "floss@frequenz.com"
 
 [project.optional-dependencies]
+render-graph = [
+  "matplotlib >= 3.7.0, < 4",
+  "networkx >= 3.0, < 4",
+]
+
 dev-flake8 = [
   "flake8 == 7.3.0",
   "flake8-docstrings == 1.7.0",
@@ -64,6 +69,7 @@ dev-mkdocs = [
 ]
 dev-mypy = [
   "mypy == 1.19.0",
+  "types-networkx>=3.6.1.20251220",
   "types-Markdown == 3.10.0.20251106",
   # For checking the noxfile, docs/ script, and tests
   "frequenz-gridpool[dev-mkdocs,dev-noxfile,dev-pytest]",
@@ -86,7 +92,7 @@ dev-pytest = [
   "async-solipsism == 0.9",
 ]
 dev = [
-  "frequenz-gridpool[dev-mkdocs,dev-flake8,dev-formatting,dev-mkdocs,dev-mypy,dev-noxfile,dev-pylint,dev-pytest]",
+  "frequenz-gridpool[dev-mkdocs,dev-flake8,dev-formatting,dev-mkdocs,dev-mypy,dev-noxfile,dev-pylint,dev-pytest,render-graph]",
 ]
 
 [project.urls]
