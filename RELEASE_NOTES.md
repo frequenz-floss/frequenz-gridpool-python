@@ -16,4 +16,4 @@
 
 ## Bug Fixes
 
-<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
+- Fixed component graph rendering so children follow the vertical order of their parents, keeping upper-level branches above lower ones in the layered layout.

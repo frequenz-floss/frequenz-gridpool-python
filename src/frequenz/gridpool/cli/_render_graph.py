@@ -124,7 +124,8 @@ class ComponentGraphRenderer:
 
         root_node = self._select_root(graph)
         layered_nodes = self._group_by_level(graph, root_node)
-        return self._build_positions(layered_nodes)
+        ordered_layers = self._order_layers(graph, layered_nodes)
+        return self._build_positions(ordered_layers)
 
     def _select_root(self, graph: Any) -> Any:
         """Select a root node for layout.
@@ -171,6 +172,56 @@ class ComponentGraphRenderer:
             layered_nodes[orphan_layer] = orphans
         return layered_nodes
 
+    def _order_layers(
+        self, graph: Any, layered_nodes: dict[int, list[Any]]
+    ) -> dict[int, list[Any]]:
+        """Order nodes within each layer based on their parent positions.
+
+        Reorders the nodes in each layer to improve visual readability when rendering a
+        layered graph layout. The first layer is ordered deterministically (by string
+        representation). For subsequent layers, nodes are ordered primarily by the
+        lowest index of any already-ordered parent (predecessor) from the previous
+        layers, with a deterministic string-based tie-breaker.
+
+        Args:
+            graph:
+                Graph-like object providing predecessor relationships via
+                ``graph.predecessors(node)``.
+            layered_nodes:
+                Mapping from layer index to the list of nodes assigned to that layer.
+
+        Returns:
+            A new mapping with the same layer keys as ``layered_nodes``, where each
+            layer's node list is ordered to align children beneath their parents.
+        """
+        ordered_layers: dict[int, list[Any]] = {}
+        previous_order: dict[Any, int] = {}
+
+        for level in sorted(layered_nodes):
+            nodes = layered_nodes[level]
+            if level == 0:
+                ordered_nodes = sorted(nodes, key=str)
+            else:
+
+                def sort_key(node: Any) -> tuple[int, str]:
+                    parents = [
+                        parent
+                        for parent in graph.predecessors(node)
+                        if parent in previous_order
+                    ]
+                    if parents:
+                        parent_index = min(previous_order[parent] for parent in parents)
+                    else:
+                        parent_index = len(previous_order)
+                    return (parent_index, str(node))
+
+                ordered_nodes = sorted(nodes, key=sort_key)
+
+            ordered_layers[level] = ordered_nodes
+            previous_order = {node: idx for idx, node in enumerate(ordered_nodes)}
+
+        return ordered_layers
+
     def _build_positions(
         self, layered_nodes: dict[int, list[Any]]
     ) -> dict[Any, tuple[float, float]]:
@@ -187,11 +238,11 @@ class ComponentGraphRenderer:
         """
         x_spacing, y_spacing = 2.5, 1.2
         pos: dict[Any, tuple[float, float]] = {}
-        for level, nodes in layered_nodes.items():
+        for level in sorted(layered_nodes):
+            nodes = layered_nodes[level]
             x_pos = level * x_spacing
-            sorted_nodes = sorted(nodes, key=str)
-            y_start = (len(sorted_nodes) - 1) * y_spacing / 2
-            for i, node in enumerate(sorted_nodes):
+            y_start = (len(nodes) - 1) * y_spacing / 2
+            for i, node in enumerate(nodes):
                 pos[node] = (x_pos, y_start - (i * y_spacing))
         return pos
 
