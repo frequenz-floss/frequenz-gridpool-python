@@ -122,13 +122,28 @@ def test_group_by_level_adds_orphans() -> None:
 def test_build_positions_centers_nodes_in_layer() -> None:
     """It should center nodes vertically within each layer."""
     renderer = ComponentGraphRenderer(MagicMock(spec=AssetsApiClient))
-    layered_nodes = {0: ["b", "a"], 1: ["c"]}
+    layered_nodes = {0: ["a", "b"], 1: ["c"]}
 
     pos = renderer._build_positions(layered_nodes)  # pylint: disable=protected-access
 
     assert pos["a"] == (0.0, 0.6)
     assert pos["b"] == (0.0, -0.6)
     assert pos["c"] == (2.5, 0.0)
+
+
+def test_compute_layout_orders_children_by_parent_position() -> None:
+    """It should keep children of higher parents above lower ones."""
+    renderer = ComponentGraphRenderer(MagicMock(spec=AssetsApiClient))
+    graph: nx.DiGraph[Any] = nx.DiGraph()
+    graph.add_edge("root", "a")
+    graph.add_edge("root", "b")
+    graph.add_edge("a", "a_child")
+    graph.add_edge("b", "b_child")
+
+    pos = renderer.compute_layout(graph)
+
+    assert pos["a"][1] > pos["b"][1]
+    assert pos["a_child"][1] > pos["b_child"][1]
 
 
 def test_render_writes_file_without_show(monkeypatch: pytest.MonkeyPatch) -> None:
