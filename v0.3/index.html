@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="_img/logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
       
         
         <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
@@ -451,6 +451,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#print-component-formulas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Print component formulas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#render-component-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Render component graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#contributing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -771,6 +821,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#print-component-formulas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Print component formulas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#render-component-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Render component graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#contributing" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -815,6 +915,29 @@
 <li><strong>Operating System:</strong> Ubuntu Linux 20.04</li>
 <li><strong>Architectures:</strong> amd64, arm64</li>
 </ul>
+<h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">¤</a></h2>
+<p>This package ships the <code>gridpool-cli</code> command with two subcommands.</p>
+<h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">¤</a></h3>
+<p>Set the Assets API credentials before running the CLI:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_URL</span><span class="o">=</span><span class="s2">&quot;grpc://...&quot;</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_AUTH_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_SIGN_SECRET</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
+</span></code></pre></div>
+<h3 id="print-component-formulas">Print component formulas<a class="headerlink" href="#print-component-formulas" title="Permanent link">¤</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;
+</span></code></pre></div>
+<p>Optional prefix formatting:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--prefix<span class="w"> </span><span class="s2">&quot;{microgrid_id}.{component}&quot;</span>
+</span></code></pre></div>
+<h3 id="render-component-graph">Render component graph<a class="headerlink" href="#render-component-graph" title="Permanent link">¤</a></h3>
+<p>Rendering requires optional dependencies. Install with:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>frequenz-gridpool<span class="o">[</span>render-graph<span class="o">]</span>
+</span></code></pre></div>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;
+</span></code></pre></div>
+<p>To save without opening a window:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--no-show<span class="w"> </span>--output<span class="w"> </span>component_graph.png
+</span></code></pre></div>
 <h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">¤</a></h2>
 <p>If you want to know how to build this project and contribute to it, please
 check out the <a href="CONTRIBUTING/">Contributing Guide</a>.</p>
@@ -928,10 +1051,10 @@ check out the <a href="CONTRIBUTING/">Contributing Guide</a>.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["content.code.annotate", "content.code.copy", "navigation.indexes", "navigation.instant", "navigation.footer", "navigation.tabs", "navigation.top", "navigation.tracking", "toc.follow"], "search": "assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["content.code.annotate", "content.code.copy", "navigation.indexes", "navigation.instant", "navigation.footer", "navigation.tabs", "navigation.top", "navigation.tracking", "toc.follow"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
