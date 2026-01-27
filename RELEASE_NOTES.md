@@ -6,14 +6,12 @@
 
 ## Upgrading
 
-* The minimum required version of `frequenz-microgrid-component-graph` is now `v0.3.4`.
+<!-- Here goes notes on how to upgrade from previous versions, including deprecations and what they should be replaced with -->
 
 ## New Features
 
-* Added `gridpool-cli render-graph` to visualize microgrid component graphs using the
-  Assets API credentials (`ASSETS_API_URL`, `ASSETS_API_AUTH_KEY`, and
-  `ASSETS_API_SIGN_SECRET`).
+<!-- Here goes the main new features and examples or instructions on how to use them -->
 
 ## Bug Fixes
 
-- Fixed component graph rendering so children follow the vertical order of their parents, keeping upper-level branches above lower ones in the layered layout.
+<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
