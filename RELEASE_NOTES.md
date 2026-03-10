@@ -2,18 +2,18 @@
 
 ## Summary
 
-<!-- Here goes a general summary of what this release is about -->
+This release adds default formulas for AC energy metrics when they are not
+explicitly configured.
 
 ## Upgrading
 
-* The minimum required version of `frequenz-microgrid-component-graph` is now `v0.3.4`.
 
 ## New Features
 
-* Added `gridpool-cli render-graph` to visualize microgrid component graphs using the
-  Assets API credentials (`ASSETS_API_URL`, `ASSETS_API_AUTH_KEY`, and
-  `ASSETS_API_SIGN_SECRET`).
+* Added default summation formulas for `AC_ENERGY_ACTIVE`,
+  `AC_ENERGY_ACTIVE_CONSUMED`, and `AC_ENERGY_ACTIVE_DELIVERED` when formulas are
+  not provided. The defaults are built from the component IDs configured for the
+  component type.
 
 ## Bug Fixes
 
-- Fixed component graph rendering so children follow the vertical order of their parents, keeping upper-level branches above lower ones in the layered layout.
