@@ -47,15 +47,16 @@ class ComponentTypeConfig:
                 "please use 'AC_POWER_ACTIVE' instead."
             )
 
-        if "AC_POWER_ACTIVE" not in self.formula:
-            if "AC_ACTIVE_POWER" in self.formula:
-                self.formula["AC_POWER_ACTIVE"] = self.formula["AC_ACTIVE_POWER"]
-            else:
-                _logger.warning(
-                    "ComponentTypeConfig: No formula provided for 'AC_POWER_ACTIVE', "
-                    "using default summation formula."
-                )
-                self.formula["AC_POWER_ACTIVE"] = "+".join(
+        defaults = {
+            "AC_POWER_ACTIVE",
+            "AC_ENERGY_ACTIVE",
+            "AC_ENERGY_ACTIVE_CONSUMED",
+            "AC_ENERGY_ACTIVE_DELIVERED",
+        }
+
+        for metric in defaults:
+            if metric not in self.formula:
+                self.formula[metric] = "+".join(
                     [f"#{cid}" for cid in self._default_cids()]
                 )
 
