@@ -10,8 +10,12 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Self, Type, cast, get_args
 
+from frequenz.client.assets import AssetsApiClient
+from frequenz.client.common.microgrid import MicrogridId
 from marshmallow import Schema
 from marshmallow_dataclass import dataclass
+
+from ._graph_generator import ComponentGraphGenerator
 
 _logger = logging.getLogger(__name__)
 
@@ -402,3 +406,126 @@ class MicrogridConfig:
             microgrid_configs.update({str(key): value for key, value in mcfgs.items()})
 
         return microgrid_configs
+
+    @staticmethod
+    async def load_configs_with_formulas(
+        assets_url: str,
+        assets_auth_key: str,
+        assets_sign_secret: str,
+        microgrid_config_files: str | Path | list[str | Path] | None = None,
+        microgrid_config_dir: str | Path | None = None,
+    ) -> dict[str, "MicrogridConfig"]:
+        """Load microgrid configurations and ensure formulas are populated.
+
+        Loads microgrid configuration files and enriches them with automatically
+        generated formulas obtained from the Assets API. Missing formulas are filled
+        using the component graph generator while preserving any formulas already
+        defined in the configuration.
+
+        Args:
+            assets_url:
+                Base URL of the Assets API.
+            assets_auth_key:
+                Authentication key used to access the Assets API.
+            assets_sign_secret:
+                Signing secret used for authenticated API requests.
+            microgrid_config_files:
+                Optional path or list of paths to individual microgrid configuration
+                files.
+            microgrid_config_dir:
+                Optional directory containing microgrid configuration files.
+
+        Returns:
+            dict[str, MicrogridConfig]:
+                Mapping from microgrid ID (as string) to the corresponding populated
+                ``MicrogridConfig`` instance.
+
+        Notes:
+            - Configuration files are first loaded via ``MicrogridConfig.load_configs``.
+            - Any missing formulas are populated by querying the Assets API and
+            generating formulas from the microgrid component graph.
+        """
+        microgrid_configs = MicrogridConfig.load_configs(
+            microgrid_config_files=microgrid_config_files,
+            microgrid_config_dir=microgrid_config_dir,
+        )
+
+        async with AssetsApiClient(
+            assets_url, auth_key=assets_auth_key, sign_secret=assets_sign_secret
+        ) as assets_client:
+            for microgrid_id, config in microgrid_configs.items():
+                await populate_missing_formulas(
+                    microgrid_id=int(microgrid_id),
+                    config=config,
+                    assets_client=assets_client,
+                )
+
+        return microgrid_configs
+
+
+async def populate_missing_formulas(
+    microgrid_id: int,
+    config: "MicrogridConfig",
+    assets_client: AssetsApiClient,
+) -> None:
+    """Populate missing component formulas from the assets API graph.
+
+    Builds a component graph for the given microgrid and derives default formulas
+    for common component types such as consumption, generation, grid, PV, battery,
+    CHP, and EV charging. Existing formulas already present in the configuration
+    are preserved; only missing component-type entries or missing metric formulas
+    are filled in.
+
+    Args:
+        microgrid_id:
+            Identifier of the microgrid whose component graph should be used to
+            derive formulas.
+        config:
+            Microgrid configuration object to update in place.
+        assets_client:
+            Assets API client used to fetch the component graph.
+
+    Returns:
+        None. The configuration is modified in place.
+
+    Notes:
+        - Existing formulas in ``config`` are never overwritten.
+        - For missing component types, a new ``ComponentTypeConfig`` is created.
+        - The same derived formula is assigned to all supported metric keys for a
+        given component type when missing.
+    """
+    cgg = ComponentGraphGenerator(assets_client)
+    graph = await cgg.get_component_graph(MicrogridId(microgrid_id))
+
+    auto_formulas = {
+        "consumption": graph.consumer_formula(),
+        "generation": graph.producer_formula(),
+        "grid": graph.grid_formula(),
+        "pv": graph.pv_formula(None),
+        "battery": graph.battery_formula(None),
+        "chp": graph.chp_formula(None),
+        "ev": graph.ev_charger_formula(None),
+    }
+
+    metrics = (
+        "AC_POWER_ACTIVE",
+        "AC_ACTIVE_POWER",
+        "AC_ENERGY_ACTIVE",
+        "AC_ENERGY_ACTIVE_CONSUMED",
+        "AC_ENERGY_ACTIVE_DELIVERED",
+    )
+
+    for ctype, formula in auto_formulas.items():
+        cfg = config.ctype.get(ctype)
+        if cfg is None:
+            config.ctype[ctype] = ComponentTypeConfig(
+                formula={metric: formula for metric in metrics}
+            )
+            continue
+
+        if cfg.formula is None:
+            cfg.formula = {}
+
+        for metric in metrics:
+            if metric not in cfg.formula:
+                cfg.formula[metric] = formula
