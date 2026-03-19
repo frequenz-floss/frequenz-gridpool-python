@@ -7,6 +7,7 @@ explicitly configured.
 
 ## Upgrading
 
+* Update assets client to v0.3.0.
 
 ## New Features
 
