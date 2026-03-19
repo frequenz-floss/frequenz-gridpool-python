@@ -3,8 +3,6 @@
 
 """Formula generation from assets API component/connection configurations."""
 
-from typing import cast
-
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.assets.electrical_component import (
     ComponentConnection,
@@ -61,6 +59,6 @@ class ComponentGraphGenerator:
 
         graph = ComponentGraph[
             ElectricalComponent, ComponentConnection, ElectricalComponentId
-        ](components, cast(list[ComponentConnection], connections))
+        ](components, connections)
 
         return graph

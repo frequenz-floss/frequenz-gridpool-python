@@ -30,7 +30,7 @@ dependencies = [
   "asyncclick >= 8.3.0.4, < 9",
   "typing-extensions >= 4.14.1, < 5",
   "frequenz-microgrid-component-graph >= 0.3.4, < 0.4",
-  "frequenz-client-assets >= 0.2.0, < 0.3",
+  "frequenz-client-assets >= 0.3.0, < 0.4",
 ]
 dynamic = ["version"]
 
