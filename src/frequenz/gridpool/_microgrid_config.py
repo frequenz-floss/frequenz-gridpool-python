@@ -51,19 +51,6 @@ class ComponentTypeConfig:
                 "please use 'AC_POWER_ACTIVE' instead."
             )
 
-        defaults = {
-            "AC_POWER_ACTIVE",
-            "AC_ENERGY_ACTIVE",
-            "AC_ENERGY_ACTIVE_CONSUMED",
-            "AC_ENERGY_ACTIVE_DELIVERED",
-        }
-
-        for metric in defaults:
-            if metric not in self.formula:
-                self.formula[metric] = "+".join(
-                    [f"#{cid}" for cid in self._default_cids()]
-                )
-
     def cids(self, metric: str = "") -> list[int]:
         """Get component IDs for this component.
 

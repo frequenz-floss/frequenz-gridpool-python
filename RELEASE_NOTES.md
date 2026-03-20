@@ -8,6 +8,7 @@ explicitly configured.
 ## Upgrading
 
 * Update assets client to v0.3.0.
+* Default formulas for AC active power and energy are removed.
 
 ## New Features
 
