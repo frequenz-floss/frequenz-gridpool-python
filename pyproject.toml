@@ -76,7 +76,7 @@ dev-mypy = [
   "frequenz-gridpool[dev-mkdocs,dev-noxfile,dev-pytest]",
 ]
 dev-noxfile = [
-  "nox == 2025.11.12",
+  "nox == 2026.2.9",
   "frequenz-repo-config[lib] == 0.16.0",
 ]
 dev-pylint = [
