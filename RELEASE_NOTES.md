@@ -2,20 +2,16 @@
 
 ## Summary
 
-This release adds default formulas for AC energy metrics when they are not
-explicitly configured.
+<!-- Here goes a general summary of what this release is about -->
 
 ## Upgrading
 
-* Update assets client to v0.3.0.
 * Default formulas for AC active power and energy are removed.
 
 ## New Features
 
-* Added default summation formulas for `AC_ENERGY_ACTIVE`,
-  `AC_ENERGY_ACTIVE_CONSUMED`, and `AC_ENERGY_ACTIVE_DELIVERED` when formulas are
-  not provided. The defaults are built from the component IDs configured for the
-  component type.
+<!-- Here goes the main new features and examples or instructions on how to use them -->
 
 ## Bug Fixes
 
+<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
