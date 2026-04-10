@@ -10,7 +10,7 @@
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+- If there are unconnected breakers at a site, they are now hidden from the component graph.  If there are breakers with connections to other components, they are still sent to the component graph.  This is a temporary measure until the graph traversal supports breakers.
 
 ## Bug Fixes
 

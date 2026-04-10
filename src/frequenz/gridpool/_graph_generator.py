@@ -3,14 +3,19 @@
 
 """Formula generation from assets API component/connection configurations."""
 
+import logging
+
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.assets.electrical_component import (
+    Breaker,
     ComponentConnection,
     ElectricalComponent,
 )
 from frequenz.client.common.microgrid import MicrogridId
 from frequenz.client.common.microgrid.electrical_components import ElectricalComponentId
 from frequenz.microgrid_component_graph import ComponentGraph
+
+_logger = logging.getLogger(__name__)
 
 
 class ComponentGraphGenerator:
@@ -56,6 +61,26 @@ class ComponentGraphGenerator:
 
         if any(c is None for c in connections):
             raise ValueError("Failed to load all electrical component connections.")
+
+        breakers = [c for c in components if isinstance(c, Breaker)]
+        connected_breakers = [
+            b
+            for b in breakers
+            if any(
+                b.id in (c.source, c.destination) for c in connections if c is not None
+            )
+        ]
+
+        if connected_breakers:
+            _logger.warning(
+                "The following breakers are connected to other components, "
+                + "which is not supported by the component graph generator and may "
+                + "lead to graph traversal issues: %s",
+                [b.id for b in connected_breakers],
+            )
+        elif breakers:
+            _logger.debug("Dropping unconnected breakers: %s", [b.id for b in breakers])
+            components = [c for c in components if not isinstance(c, Breaker)]
 
         graph = ComponentGraph[
             ElectricalComponent, ComponentConnection, ElectricalComponentId
