@@ -71,7 +71,7 @@ dev-mkdocs = [
 dev-mypy = [
   "mypy == 1.20.0",
   "types-networkx>=3.6.1.20251220",
-  "types-Markdown == 3.10.2.20260211",
+  "types-Markdown == 3.10.2.20260408",
   # For checking the noxfile, docs/ script, and tests
   "frequenz-gridpool[dev-mkdocs,dev-noxfile,dev-pytest]",
 ]
