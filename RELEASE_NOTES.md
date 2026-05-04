@@ -14,4 +14,4 @@
 
 ## Bug Fixes
 
-<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
+- Fixed auto-formula population to only fill formulas for component types already present in a microgrid configuration. This prevents creating placeholder entries with `None` formulas for component types that are not configured.
