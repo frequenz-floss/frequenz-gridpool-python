@@ -441,10 +441,13 @@ class MicrogridConfig:
             assets_url, auth_key=assets_auth_key, sign_secret=assets_sign_secret
         ) as assets_client:
             for microgrid_id, config in microgrid_configs.items():
+                relevant_ctypes = set(config.ctype.keys())
+
                 await populate_missing_formulas(
                     microgrid_id=int(microgrid_id),
                     config=config,
                     assets_client=assets_client,
+                    component_types=relevant_ctypes,
                 )
 
         return microgrid_configs
@@ -454,6 +457,7 @@ async def populate_missing_formulas(
     microgrid_id: int,
     config: "MicrogridConfig",
     assets_client: AssetsApiClient,
+    component_types: set[str] | None = None,
 ) -> None:
     """Populate missing component formulas from the assets API graph.
 
@@ -471,6 +475,8 @@ async def populate_missing_formulas(
             Microgrid configuration object to update in place.
         assets_client:
             Assets API client used to fetch the component graph.
+        component_types:
+            Optional set of component types to consider when populating formulas.
 
     Returns:
         None. The configuration is modified in place.
@@ -502,12 +508,15 @@ async def populate_missing_formulas(
         "AC_ENERGY_ACTIVE_DELIVERED",
     )
 
+    # Default: only populate component types already present in the config.
+    allowed_ctypes = component_types or set(config.ctype.keys())
+
     for ctype, formula in auto_formulas.items():
+        if ctype not in allowed_ctypes:
+            continue
+
         cfg = config.ctype.get(ctype)
         if cfg is None:
-            config.ctype[ctype] = ComponentTypeConfig(
-                formula={metric: formula for metric in metrics}
-            )
             continue
 
         if cfg.formula is None:
