@@ -10,8 +10,8 @@
 
 ## New Features
 
-- If there are unconnected breakers at a site, they are now hidden from the component graph.  If there are breakers with connections to other components, they are still sent to the component graph.  This is a temporary measure until the graph traversal supports breakers.
+<!-- Here goes the main new features and examples or instructions on how to use them -->
 
 ## Bug Fixes
 
-- Fixed auto-formula population to only fill formulas for component types already present in a microgrid configuration. This prevents creating placeholder entries with `None` formulas for component types that are not configured.
+<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
