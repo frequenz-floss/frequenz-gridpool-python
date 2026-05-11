@@ -117,7 +117,7 @@ class PVConfig:
     rated_power: float | None = None
     """Rated power of the inverters in Watt."""
 
-    curtailable: bool = False
+    curtailable: bool | None = None
     """Flag to indicate if PV system can be curtailed."""
 
 
