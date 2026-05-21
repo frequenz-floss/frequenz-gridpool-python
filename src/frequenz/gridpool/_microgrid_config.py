@@ -6,6 +6,7 @@
 import logging
 import re
 import tomllib
+from copy import deepcopy
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
@@ -421,6 +422,67 @@ class MicrogridConfig:
         return microgrid_configs
 
     @staticmethod
+    async def load_configs_from_assets_api(
+        assets_url: str,
+        assets_auth_key: str,
+        assets_sign_secret: str,
+        microgrid_ids: list[int],
+        populate_formulas: bool = True,
+    ) -> dict[str, "MicrogridConfig"]:
+        """Load microgrid configs with location metadata from the Assets API.
+
+        Fetches each microgrid's location (latitude, longitude) and optionally
+        populates formulas from the component graph.  This is the canonical
+        single-source loader for both metadata and formulas so that callers
+        (e.g. the forecast pipeline) do not have to re-implement this logic.
+
+        Args:
+            assets_url:
+                Base URL of the Assets API.
+            assets_auth_key:
+                Authentication key used to access the Assets API.
+            assets_sign_secret:
+                Signing secret used for authenticated API requests.
+            microgrid_ids:
+                List of microgrid IDs to load configurations for.
+            populate_formulas:
+                When ``True`` (default), formulas are derived from the component
+                graph and written into each config via
+                :func:`populate_missing_formulas`.  Set to ``False`` to load
+                metadata only.
+
+        Returns:
+            dict[str, MicrogridConfig]:
+                Mapping from microgrid ID (as string) to the populated
+                ``MicrogridConfig`` instance.
+        """
+        async with AssetsApiClient(
+            assets_url,
+            auth_key=assets_auth_key,
+            sign_secret=assets_sign_secret,
+        ) as client:
+            configs: dict[str, MicrogridConfig] = {}
+            for microgrid_id in microgrid_ids:
+                mgrid = await client.get_microgrid(MicrogridId(microgrid_id))
+                location = mgrid.location if mgrid.location else None
+                cfg = MicrogridConfig(
+                    meta=Metadata(
+                        microgrid_id=microgrid_id,
+                        latitude=location.latitude if location else None,
+                        longitude=location.longitude if location else None,
+                    )
+                )
+                if populate_formulas:
+                    await populate_missing_formulas(
+                        microgrid_id=microgrid_id,
+                        config=cfg,
+                        assets_client=client,
+                    )
+                configs[str(microgrid_id)] = cfg
+
+        return configs
+
+    @staticmethod
     async def load_configs_with_formulas(
         assets_url: str,
         assets_auth_key: str,
@@ -477,6 +539,69 @@ class MicrogridConfig:
                 )
 
         return microgrid_configs
+
+
+def merge_microgrid_configs(
+    base: MicrogridConfig,
+    override: MicrogridConfig,
+) -> MicrogridConfig:
+    """Merge two :class:`MicrogridConfig` objects.
+
+    The *override* config takes precedence over *base*.  Nested dictionaries
+    are merged recursively.  If a field in *override* is ``None`` the value
+    from *base* is retained, so partial overrides never nullify existing data.
+
+    Args:
+        base: The base MicrogridConfig.
+        override: The overriding MicrogridConfig.
+
+    Returns:
+        A new MicrogridConfig representing the merged result.
+    """
+    schema = MicrogridConfig.Schema()
+    base_dict = schema.dump(base)
+    override_dict = schema.dump(override)
+
+    def _deep_merge(a: dict[Any, Any], b: dict[Any, Any]) -> dict[Any, Any]:
+        result = deepcopy(a)
+        for k, v in b.items():
+            if v is None:
+                continue
+            if isinstance(v, dict) and isinstance(result.get(k), dict):
+                result[k] = _deep_merge(result[k], v)
+            else:
+                result[k] = v
+        return result
+
+    merged = schema.load(_deep_merge(base_dict, override_dict))
+    assert isinstance(merged, MicrogridConfig)
+    return merged
+
+
+def merge_config_maps(
+    base: dict[str, MicrogridConfig],
+    override: dict[str, MicrogridConfig],
+) -> dict[str, MicrogridConfig]:
+    """Merge two dictionaries of :class:`MicrogridConfig` objects.
+
+    For microgrid IDs present in both maps the configs are merged via
+    :func:`merge_microgrid_configs`.  IDs that exist only in one map are
+    included unchanged.
+
+    Args:
+        base: The base dictionary of MicrogridConfig objects.
+        override: The overriding dictionary of MicrogridConfig objects.
+
+    Returns:
+        A new dictionary representing the merged result.
+    """
+    merged = dict(base)
+    for mid, cfg in override.items():
+        if mid in merged:
+            merged[mid] = merge_microgrid_configs(merged[mid], cfg)
+        else:
+            merged[mid] = cfg
+    return merged
 
 
 async def populate_missing_formulas(
