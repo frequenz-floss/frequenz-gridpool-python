@@ -7,6 +7,7 @@ import logging
 import re
 import tomllib
 from dataclasses import field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Self, Type, cast, get_args
 
@@ -111,6 +112,12 @@ class ComponentTypeConfig:
 class PVConfig:
     """Configuration of a PV system in a microgrid."""
 
+    start_time: datetime | None = None
+    """Start time of the PV system installation."""
+
+    end_time: datetime | None = None
+    """End time of the PV system installation."""
+
     peak_power: float | None = None
     """Peak power of the PV system in Watt."""
 
@@ -123,7 +130,14 @@ class PVConfig:
 
 @dataclass(frozen=True)
 class WindConfig:
+    # pylint: disable=too-many-instance-attributes
     """Configuration of a wind turbine in a microgrid."""
+
+    start_time: datetime | None = None
+    """Start time of the wind turbine installation."""
+
+    end_time: datetime | None = None
+    """End time of the wind turbine installation."""
 
     turbine_model: str | None = None
     """Model name of the wind turbine."""
@@ -150,6 +164,12 @@ class WindConfig:
 @dataclass(frozen=True)
 class BatteryConfig:
     """Configuration of a battery in a microgrid."""
+
+    start_time: datetime | None = None
+    """Start time of the battery installation."""
+
+    end_time: datetime | None = None
+    """End time of the battery installation."""
 
     capacity: float | None = None
     """Capacity of the battery in Wh."""
@@ -183,6 +203,12 @@ class Metadata:
 
     altitude: float | None = None
     """Geographic altitude of the microgrid."""
+
+    start_time: datetime | None = None
+    """Start time of the microgrid operation."""
+
+    end_time: datetime | None = None
+    """End time of the microgrid operation."""
 
 
 @dataclass
