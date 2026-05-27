@@ -6,11 +6,11 @@
 
 ## Upgrading
 
-* Change the `curtailable` flag default of the PV config to `None`.
+<!-- Here goes notes on how to upgrade from previous versions, including deprecations and what they should be replaced with -->
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+* Add start and end time to microgrid configs.
 
 ## Bug Fixes
 
