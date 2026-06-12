@@ -645,8 +645,8 @@ async def populate_missing_formulas(
     Notes:
         - Existing formulas in `config` are never overwritten.
         - For missing component types, a new `ComponentTypeConfig` is created.
-        - The same derived formula is assigned to all supported metric keys for a
-        given component type when missing.
+        - The derived formula is assigned to the `AC_POWER_ACTIVE` metric key
+        for a given component type when missing.
     """
     cgg = ComponentGraphGenerator(assets_client)
     graph = await cgg.get_component_graph(MicrogridId(microgrid_id))
@@ -659,14 +659,6 @@ async def populate_missing_formulas(
         "chp": graph.chp_formula(None),
         "ev": graph.ev_charger_formula(None),
     }
-
-    metrics = (
-        "AC_POWER_ACTIVE",
-        "AC_ACTIVE_POWER",
-        "AC_ENERGY_ACTIVE",
-        "AC_ENERGY_ACTIVE_CONSUMED",
-        "AC_ENERGY_ACTIVE_DELIVERED",
-    )
 
     # Default: only populate component types already present in the config.
     allowed_ctypes = component_types or set(config.ctype.keys())
@@ -682,6 +674,5 @@ async def populate_missing_formulas(
         if cfg.formula is None:
             cfg.formula = {}
 
-        for metric in metrics:
-            if metric not in cfg.formula:
-                cfg.formula[metric] = formula
+        if "AC_POWER_ACTIVE" not in cfg.formula:
+            cfg.formula["AC_POWER_ACTIVE"] = formula
