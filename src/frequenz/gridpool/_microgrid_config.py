@@ -446,15 +446,15 @@ class MicrogridConfig:
             microgrid_ids:
                 List of microgrid IDs to load configurations for.
             populate_formulas:
-                When ``True`` (default), formulas are derived from the component
+                When `True` (default), formulas are derived from the component
                 graph and written into each config via
-                :func:`populate_missing_formulas`.  Set to ``False`` to load
+                `populate_missing_formulas`.  Set to `False` to load
                 metadata only.
 
         Returns:
             dict[str, MicrogridConfig]:
                 Mapping from microgrid ID (as string) to the populated
-                ``MicrogridConfig`` instance.
+                `MicrogridConfig` instance.
         """
         async with AssetsApiClient(
             assets_url,
@@ -513,10 +513,10 @@ class MicrogridConfig:
         Returns:
             dict[str, MicrogridConfig]:
                 Mapping from microgrid ID (as string) to the corresponding populated
-                ``MicrogridConfig`` instance.
+                `MicrogridConfig` instance.
 
         Notes:
-            - Configuration files are first loaded via ``MicrogridConfig.load_configs``.
+            - Configuration files are first loaded via `MicrogridConfig.load_configs`.
             - Any missing formulas are populated by querying the Assets API and
             generating formulas from the microgrid component graph.
         """
@@ -545,10 +545,10 @@ def merge_microgrid_configs(
     base: MicrogridConfig,
     override: MicrogridConfig,
 ) -> MicrogridConfig:
-    """Merge two :class:`MicrogridConfig` objects.
+    """Merge two `MicrogridConfig` objects.
 
     The *override* config takes precedence over *base*.  Nested dictionaries
-    are merged recursively.  If a field in *override* is ``None`` the value
+    are merged recursively.  If a field in *override* is `None` the value
     from *base* is retained, so partial overrides never nullify existing data.
 
     Args:
@@ -582,10 +582,10 @@ def merge_config_maps(
     base: dict[str, MicrogridConfig],
     override: dict[str, MicrogridConfig],
 ) -> dict[str, MicrogridConfig]:
-    """Merge two dictionaries of :class:`MicrogridConfig` objects.
+    """Merge two dictionaries of `MicrogridConfig` objects.
 
     For microgrid IDs present in both maps the configs are merged via
-    :func:`merge_microgrid_configs`.  IDs that exist only in one map are
+    `merge_microgrid_configs`.  IDs that exist only in one map are
     included unchanged.
 
     Args:
@@ -633,8 +633,8 @@ async def populate_missing_formulas(
         None. The configuration is modified in place.
 
     Notes:
-        - Existing formulas in ``config`` are never overwritten.
-        - For missing component types, a new ``ComponentTypeConfig`` is created.
+        - Existing formulas in `config` are never overwritten.
+        - For missing component types, a new `ComponentTypeConfig` is created.
         - The same derived formula is assigned to all supported metric keys for a
         given component type when missing.
     """
