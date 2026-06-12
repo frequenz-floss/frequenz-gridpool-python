@@ -456,15 +456,7 @@ class MicrogridConfig:
         configs: dict[str, MicrogridConfig] = {}
         for microgrid_id in microgrid_ids:
             try:
-                mgrid = await assets_client.get_microgrid(MicrogridId(microgrid_id))
-                location = mgrid.location if mgrid.location else None
-                cfg = MicrogridConfig(
-                    meta=Metadata(
-                        microgrid_id=microgrid_id,
-                        latitude=location.latitude if location else None,
-                        longitude=location.longitude if location else None,
-                    )
-                )
+                cfg = await _build_config_from_metadata(assets_client, microgrid_id)
                 if populate_formulas:
                     await populate_missing_formulas(
                         microgrid_id=microgrid_id,
@@ -591,6 +583,32 @@ def merge_config_maps(
         else:
             merged[mid] = cfg
     return merged
+
+
+async def _build_config_from_metadata(
+    assets_client: AssetsApiClient, microgrid_id: int
+) -> MicrogridConfig:
+    """Build a base config for a microgrid from its Assets API metadata.
+
+    Fetches the microgrid's location and returns a `MicrogridConfig` carrying
+    only metadata; formulas are populated separately.
+
+    Args:
+        assets_client: Assets API client used to fetch the microgrid.
+        microgrid_id: ID of the microgrid to fetch.
+
+    Returns:
+        A `MicrogridConfig` with metadata populated from the Assets API.
+    """
+    mgrid = await assets_client.get_microgrid(MicrogridId(microgrid_id))
+    location = mgrid.location if mgrid.location else None
+    return MicrogridConfig(
+        meta=Metadata(
+            microgrid_id=microgrid_id,
+            latitude=location.latitude if location else None,
+            longitude=location.longitude if location else None,
+        )
+    )
 
 
 def _is_zero_formula(formula: str) -> bool:
