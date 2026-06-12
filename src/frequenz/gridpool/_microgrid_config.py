@@ -614,6 +614,21 @@ def merge_config_maps(
     return merged
 
 
+def _is_zero_formula(formula: str) -> bool:
+    """Return whether a derived formula is empty or a constant zero.
+
+    Component types absent from a microgrid yield an empty formula or one that
+    is just a zero constant (e.g. `0.0`), which is not worth storing.
+    """
+    stripped = formula.strip()
+    if not stripped:
+        return True
+    try:
+        return float(stripped) == 0.0
+    except ValueError:
+        return False
+
+
 async def populate_missing_formulas(
     microgrid_id: int,
     config: "MicrogridConfig",
@@ -664,6 +679,11 @@ async def populate_missing_formulas(
 
     for ctype, formula in auto_formulas.items():
         if component_types is not None and ctype not in component_types:
+            continue
+
+        # Skip component types, whose derived formula
+        # is empty or evaluates to a constant zero.
+        if _is_zero_formula(formula):
             continue
 
         cfg = config.ctype.get(ctype)
