@@ -637,7 +637,9 @@ async def populate_missing_formulas(
         assets_client:
             Assets API client used to fetch the component graph.
         component_types:
-            Optional set of component types to consider when populating formulas.
+            Set of component types to consider when populating formulas. When
+            `None` (the default), every component type a formula can be derived
+            for is considered.
 
     Returns:
         None. The configuration is modified in place.
@@ -660,16 +662,14 @@ async def populate_missing_formulas(
         "ev": graph.ev_charger_formula(None),
     }
 
-    # Default: only populate component types already present in the config.
-    allowed_ctypes = component_types or set(config.ctype.keys())
-
     for ctype, formula in auto_formulas.items():
-        if ctype not in allowed_ctypes:
+        if component_types is not None and ctype not in component_types:
             continue
 
         cfg = config.ctype.get(ctype)
         if cfg is None:
-            continue
+            cfg = ComponentTypeConfig()
+            config.ctype[ctype] = cfg
 
         if cfg.formula is None:
             cfg.formula = {}
