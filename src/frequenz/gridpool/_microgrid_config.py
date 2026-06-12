@@ -423,9 +423,7 @@ class MicrogridConfig:
 
     @staticmethod
     async def load_configs_from_assets_api(
-        assets_url: str,
-        assets_auth_key: str,
-        assets_sign_secret: str,
+        assets_client: AssetsApiClient,
         microgrid_ids: list[int],
         populate_formulas: bool = True,
     ) -> dict[str, "MicrogridConfig"]:
@@ -437,12 +435,9 @@ class MicrogridConfig:
         (e.g. the forecast pipeline) do not have to re-implement this logic.
 
         Args:
-            assets_url:
-                Base URL of the Assets API.
-            assets_auth_key:
-                Authentication key used to access the Assets API.
-            assets_sign_secret:
-                Signing secret used for authenticated API requests.
+            assets_client:
+                Assets API client used to fetch microgrid metadata and the
+                component graph.
             microgrid_ids:
                 List of microgrid IDs to load configurations for.
             populate_formulas:
@@ -458,45 +453,38 @@ class MicrogridConfig:
                 are logged as warnings and omitted, so the returned mapping may
                 cover fewer microgrids than were requested.
         """
-        async with AssetsApiClient(
-            assets_url,
-            auth_key=assets_auth_key,
-            sign_secret=assets_sign_secret,
-        ) as client:
-            configs: dict[str, MicrogridConfig] = {}
-            for microgrid_id in microgrid_ids:
-                try:
-                    mgrid = await client.get_microgrid(MicrogridId(microgrid_id))
-                    location = mgrid.location if mgrid.location else None
-                    cfg = MicrogridConfig(
-                        meta=Metadata(
-                            microgrid_id=microgrid_id,
-                            latitude=location.latitude if location else None,
-                            longitude=location.longitude if location else None,
-                        )
+        configs: dict[str, MicrogridConfig] = {}
+        for microgrid_id in microgrid_ids:
+            try:
+                mgrid = await assets_client.get_microgrid(MicrogridId(microgrid_id))
+                location = mgrid.location if mgrid.location else None
+                cfg = MicrogridConfig(
+                    meta=Metadata(
+                        microgrid_id=microgrid_id,
+                        latitude=location.latitude if location else None,
+                        longitude=location.longitude if location else None,
                     )
-                    if populate_formulas:
-                        await populate_missing_formulas(
-                            microgrid_id=microgrid_id,
-                            config=cfg,
-                            assets_client=client,
-                        )
-                except Exception as exc:  # pylint: disable=broad-except
-                    _logger.warning(
-                        "Failed to load microgrid %s from the Assets API: %s",
-                        microgrid_id,
-                        exc,
+                )
+                if populate_formulas:
+                    await populate_missing_formulas(
+                        microgrid_id=microgrid_id,
+                        config=cfg,
+                        assets_client=assets_client,
                     )
-                    continue
-                configs[str(microgrid_id)] = cfg
+            except Exception as exc:  # pylint: disable=broad-except
+                _logger.warning(
+                    "Failed to load microgrid %s from the Assets API: %s",
+                    microgrid_id,
+                    exc,
+                )
+                continue
+            configs[str(microgrid_id)] = cfg
 
         return configs
 
     @staticmethod
     async def load_configs_with_formulas(
-        assets_url: str,
-        assets_auth_key: str,
-        assets_sign_secret: str,
+        assets_client: AssetsApiClient,
         microgrid_config_files: str | Path | list[str | Path] | None = None,
         microgrid_config_dir: str | Path | None = None,
     ) -> dict[str, "MicrogridConfig"]:
@@ -508,12 +496,8 @@ class MicrogridConfig:
         defined in the configuration.
 
         Args:
-            assets_url:
-                Base URL of the Assets API.
-            assets_auth_key:
-                Authentication key used to access the Assets API.
-            assets_sign_secret:
-                Signing secret used for authenticated API requests.
+            assets_client:
+                Assets API client used to fetch the component graph.
             microgrid_config_files:
                 Optional path or list of paths to individual microgrid configuration
                 files.
@@ -535,18 +519,13 @@ class MicrogridConfig:
             microgrid_config_dir=microgrid_config_dir,
         )
 
-        async with AssetsApiClient(
-            assets_url, auth_key=assets_auth_key, sign_secret=assets_sign_secret
-        ) as assets_client:
-            for microgrid_id, config in microgrid_configs.items():
-                relevant_ctypes = set(config.ctype.keys())
-
-                await populate_missing_formulas(
-                    microgrid_id=int(microgrid_id),
-                    config=config,
-                    assets_client=assets_client,
-                    component_types=relevant_ctypes,
-                )
+        for microgrid_id, config in microgrid_configs.items():
+            await populate_missing_formulas(
+                microgrid_id=int(microgrid_id),
+                config=config,
+                assets_client=assets_client,
+                component_types=set(config.ctype.keys()),
+            )
 
         return microgrid_configs
 
