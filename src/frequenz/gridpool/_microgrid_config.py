@@ -454,7 +454,9 @@ class MicrogridConfig:
         Returns:
             dict[str, MicrogridConfig]:
                 Mapping from microgrid ID (as string) to the populated
-                `MicrogridConfig` instance.
+                `MicrogridConfig` instance. Microgrids that could not be loaded
+                are logged as warnings and omitted, so the returned mapping may
+                cover fewer microgrids than were requested.
         """
         async with AssetsApiClient(
             assets_url,
@@ -463,21 +465,29 @@ class MicrogridConfig:
         ) as client:
             configs: dict[str, MicrogridConfig] = {}
             for microgrid_id in microgrid_ids:
-                mgrid = await client.get_microgrid(MicrogridId(microgrid_id))
-                location = mgrid.location if mgrid.location else None
-                cfg = MicrogridConfig(
-                    meta=Metadata(
-                        microgrid_id=microgrid_id,
-                        latitude=location.latitude if location else None,
-                        longitude=location.longitude if location else None,
+                try:
+                    mgrid = await client.get_microgrid(MicrogridId(microgrid_id))
+                    location = mgrid.location if mgrid.location else None
+                    cfg = MicrogridConfig(
+                        meta=Metadata(
+                            microgrid_id=microgrid_id,
+                            latitude=location.latitude if location else None,
+                            longitude=location.longitude if location else None,
+                        )
                     )
-                )
-                if populate_formulas:
-                    await populate_missing_formulas(
-                        microgrid_id=microgrid_id,
-                        config=cfg,
-                        assets_client=client,
+                    if populate_formulas:
+                        await populate_missing_formulas(
+                            microgrid_id=microgrid_id,
+                            config=cfg,
+                            assets_client=client,
+                        )
+                except Exception as exc:  # pylint: disable=broad-except
+                    _logger.warning(
+                        "Failed to load microgrid %s from the Assets API: %s",
+                        microgrid_id,
+                        exc,
                     )
+                    continue
                 configs[str(microgrid_id)] = cfg
 
         return configs
