@@ -623,9 +623,9 @@ async def populate_missing_formulas(
     """Populate missing component formulas from the assets API graph.
 
     Builds a component graph for the given microgrid and derives default formulas
-    for common component types such as consumption, generation, grid, PV, battery,
-    CHP, and EV charging. Existing formulas already present in the configuration
-    are preserved; only missing component-type entries or missing metric formulas
+    for common component types such as consumption, grid, PV, battery, CHP, and
+    EV charging. Existing formulas already present in the configuration are
+    preserved; only missing component-type entries or missing metric formulas
     are filled in.
 
     Args:
@@ -653,7 +653,6 @@ async def populate_missing_formulas(
 
     auto_formulas = {
         "consumption": graph.consumer_formula(),
-        "generation": graph.producer_formula(),
         "grid": graph.grid_formula(),
         "pv": graph.pv_formula(None),
         "battery": graph.battery_formula(None),
