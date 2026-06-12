@@ -359,7 +359,7 @@ class MicrogridConfig:
         return cls._load_table_entries(data)
 
     @staticmethod
-    def load_configs(
+    def load_configs_from_files(
         microgrid_config_files: str | Path | list[str | Path] | None = None,
         microgrid_config_dir: str | Path | None = None,
     ) -> dict[str, "MicrogridConfig"]:
@@ -502,11 +502,12 @@ class MicrogridConfig:
                 `MicrogridConfig` instance.
 
         Notes:
-            - Configuration files are first loaded via `MicrogridConfig.load_configs`.
+            - Configuration files are first loaded via
+            `MicrogridConfig.load_configs_from_files`.
             - Any missing formulas are populated by querying the Assets API and
             generating formulas from the microgrid component graph.
         """
-        microgrid_configs = MicrogridConfig.load_configs(
+        microgrid_configs = MicrogridConfig.load_configs_from_files(
             microgrid_config_files=microgrid_config_files,
             microgrid_config_dir=microgrid_config_dir,
         )

@@ -128,7 +128,7 @@ def test_load_configs(mocker: MockerFixture) -> None:
     mock_file = mocker.mock_open(read_data=toml_data.encode("utf-8"))
     mocker.patch("pathlib.Path.open", mock_file)
     mocker.patch("pathlib.Path.is_file", mocker.Mock(return_value=True))
-    configs = MicrogridConfig.load_configs(Path("mock_path.toml"))
+    configs = MicrogridConfig.load_configs_from_files(Path("mock_path.toml"))
 
     assert "1" in configs
     assert configs["1"].meta is not None
