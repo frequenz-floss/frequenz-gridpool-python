@@ -1,23 +1,35 @@
 # License: MIT
 # Copyright © 2025 Frequenz Energy-as-a-Service GmbH
 
-"""High-level interface to grid pools for the Frequenz platform."""
+"""Microgrid configuration data model and loading."""
 
-from ._graph_generator import ComponentGraphGenerator
-from .config import (
-    Metadata,
-    MicrogridConfig,
+from .load import (
     load_configs,
     load_configs_from_api,
     load_configs_from_files,
+)
+from .microgrid import (
+    BatteryConfig,
+    ComponentCategory,
+    ComponentType,
+    ComponentTypeConfig,
+    Metadata,
+    MicrogridConfig,
+    PVConfig,
+    WindConfig,
     merge_config_maps,
     merge_microgrid_configs,
 )
 
 __all__ = [
-    "ComponentGraphGenerator",
+    "BatteryConfig",
+    "ComponentCategory",
+    "ComponentType",
+    "ComponentTypeConfig",
     "Metadata",
     "MicrogridConfig",
+    "PVConfig",
+    "WindConfig",
     "load_configs",
     "load_configs_from_api",
     "load_configs_from_files",

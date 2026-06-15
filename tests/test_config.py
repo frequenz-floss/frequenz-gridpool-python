@@ -10,10 +10,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from frequenz.gridpool import MicrogridConfig
-from frequenz.gridpool._microgrid_config import (
-    ComponentTypeConfig,
-    load_configs_from_files,
-)
+from frequenz.gridpool.config import ComponentTypeConfig, load_configs_from_files
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
