@@ -422,7 +422,7 @@ class MicrogridConfig:
         return microgrid_configs
 
     @staticmethod
-    async def load_configs_from_assets_api(
+    async def load_configs_from_api(
         assets_client: AssetsApiClient,
         microgrid_ids: list[int],
         populate_formulas: bool = True,
