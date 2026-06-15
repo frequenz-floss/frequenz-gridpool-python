@@ -475,6 +475,85 @@ async def load_configs_from_api(
     return configs
 
 
+async def load_configs(
+    default_files: str | Path | list[str | Path] | None = None,
+    assets_client: AssetsApiClient | None = None,
+    override_files: str | Path | list[str | Path] | None = None,
+    microgrid_ids: list[int] | None = None,
+) -> dict[str, "MicrogridConfig"]:
+    """Load configs from up to three sources and merge them in layers.
+
+    Combines up to three sources, listed here from lowest to highest
+    precedence: a *default* config file layer, the Assets API, and an
+    *override* config file layer.  Higher layers win on conflicts, while
+    lower layers fill in anything the higher ones leave unset.  This lets
+    callers pick a strategy by choosing which sources to pass, for example:
+
+    - `default_files` + `assets_client`: files provide defaults that the
+      Assets API overrides.
+    - `assets_client` + `override_files`: the Assets API provides the base
+      that files override.
+    - all three: the Assets API sits between a default and an override file
+      layer.
+
+    The microgrid IDs fetched from the Assets API are `microgrid_ids` when
+    given, otherwise the IDs found in the default and override files.  This
+    lets the Assets API layer be used even when no files are given.
+
+    Args:
+        default_files:
+            Optional path or list of paths to config files forming the
+            lowest-precedence layer.
+        assets_client:
+            Optional Assets API client.  When given, microgrid metadata and
+            formulas are fetched and layered above the default files.
+        override_files:
+            Optional path or list of paths to config files forming the
+            highest-precedence layer.
+        microgrid_ids:
+            Optional explicit microgrid IDs to fetch from the Assets API.
+            When given, these replace the IDs derived from the files, so the
+            Assets API layer can be used without any files.
+
+    Returns:
+        dict[str, MicrogridConfig]:
+            Mapping from microgrid ID (as string) to the merged
+            `MicrogridConfig` instance.
+
+    Raises:
+        ValueError: If none of the three sources is provided, or if
+            `microgrid_ids` is given without an `assets_client`.
+    """
+    if default_files is None and assets_client is None and override_files is None:
+        raise ValueError("At least one config source must be provided.")
+
+    if microgrid_ids is not None and assets_client is None:
+        raise ValueError("microgrid_ids requires an assets_client.")
+
+    configs: dict[str, MicrogridConfig] = {}
+    if default_files is not None:
+        configs = load_configs_from_files(
+            microgrid_config_files=default_files,
+        )
+
+    override_configs: dict[str, MicrogridConfig] = {}
+    if override_files is not None:
+        override_configs = load_configs_from_files(
+            microgrid_config_files=override_files,
+        )
+
+    if assets_client is not None:
+        if microgrid_ids is None:
+            microgrid_ids = sorted({int(mid) for mid in (*configs, *override_configs)})
+        assets_configs = await load_configs_from_api(
+            assets_client=assets_client,
+            microgrid_ids=microgrid_ids,
+        )
+        configs = merge_config_maps(base=configs, override=assets_configs)
+
+    return merge_config_maps(base=configs, override=override_configs)
+
+
 def merge_microgrid_configs(
     base: MicrogridConfig,
     override: MicrogridConfig,
