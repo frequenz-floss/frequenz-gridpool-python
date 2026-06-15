@@ -4,6 +4,17 @@
 """High-level interface to grid pools for the Frequenz platform."""
 
 from ._graph_generator import ComponentGraphGenerator
-from ._microgrid_config import Metadata, MicrogridConfig
+from ._microgrid_config import (
+    Metadata,
+    MicrogridConfig,
+    merge_config_maps,
+    merge_microgrid_configs,
+)
 
-__all__ = ["ComponentGraphGenerator", "Metadata", "MicrogridConfig"]
+__all__ = [
+    "ComponentGraphGenerator",
+    "Metadata",
+    "MicrogridConfig",
+    "merge_config_maps",
+    "merge_microgrid_configs",
+]
