@@ -474,54 +474,6 @@ class MicrogridConfig:
 
         return configs
 
-    @staticmethod
-    async def load_configs_with_formulas(
-        assets_client: AssetsApiClient,
-        microgrid_config_files: str | Path | list[str | Path] | None = None,
-        microgrid_config_dir: str | Path | None = None,
-    ) -> dict[str, "MicrogridConfig"]:
-        """Load microgrid configurations and ensure formulas are populated.
-
-        Loads microgrid configuration files and enriches them with automatically
-        generated formulas obtained from the Assets API. Missing formulas are filled
-        using the component graph generator while preserving any formulas already
-        defined in the configuration.
-
-        Args:
-            assets_client:
-                Assets API client used to fetch the component graph.
-            microgrid_config_files:
-                Optional path or list of paths to individual microgrid configuration
-                files.
-            microgrid_config_dir:
-                Optional directory containing microgrid configuration files.
-
-        Returns:
-            dict[str, MicrogridConfig]:
-                Mapping from microgrid ID (as string) to the corresponding populated
-                `MicrogridConfig` instance.
-
-        Notes:
-            - Configuration files are first loaded via
-            `MicrogridConfig.load_configs_from_files`.
-            - Any missing formulas are populated by querying the Assets API and
-            generating formulas from the microgrid component graph.
-        """
-        microgrid_configs = MicrogridConfig.load_configs_from_files(
-            microgrid_config_files=microgrid_config_files,
-            microgrid_config_dir=microgrid_config_dir,
-        )
-
-        for microgrid_id, config in microgrid_configs.items():
-            await populate_missing_formulas(
-                microgrid_id=int(microgrid_id),
-                config=config,
-                assets_client=assets_client,
-                component_types=set(config.ctype.keys()),
-            )
-
-        return microgrid_configs
-
 
 def merge_microgrid_configs(
     base: MicrogridConfig,
@@ -592,14 +544,14 @@ async def _build_config_from_metadata(
     """Build a base config for a microgrid from its Assets API metadata.
 
     Fetches the microgrid's location and returns a `MicrogridConfig` carrying
-    only metadata; formulas are populated separately.
+    only metadata; formulas are derived separately.
 
     Args:
         assets_client: Assets API client used to fetch the microgrid.
         microgrid_id: ID of the microgrid to fetch.
 
     Returns:
-        A `MicrogridConfig` with metadata populated from the Assets API.
+        A `MicrogridConfig` with metadata from the Assets API.
     """
     mgrid = await assets_client.get_microgrid(MicrogridId(microgrid_id))
     location = mgrid.location if mgrid.location else None
