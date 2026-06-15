@@ -358,121 +358,121 @@ class MicrogridConfig:
 
         return cls._load_table_entries(data)
 
-    @staticmethod
-    def load_configs_from_files(
-        microgrid_config_files: str | Path | list[str | Path] | None = None,
-        microgrid_config_dir: str | Path | None = None,
-    ) -> dict[str, "MicrogridConfig"]:
-        """Load multiple microgrid configurations from a file.
 
-        Configs for a single microgrid are expected to be in a single file.
-        Later files with the same microgrid ID will overwrite the previous configs.
+def load_configs_from_files(
+    microgrid_config_files: str | Path | list[str | Path] | None = None,
+    microgrid_config_dir: str | Path | None = None,
+) -> dict[str, "MicrogridConfig"]:
+    """Load multiple microgrid configurations from a file.
 
-        Args:
-            microgrid_config_files: Path to a single microgrid config file or list of paths.
-            microgrid_config_dir: Directory containing multiple microgrid config files.
+    Configs for a single microgrid are expected to be in a single file.
+    Later files with the same microgrid ID will overwrite the previous configs.
 
-        Returns:
-            Dictionary of single microgrid formula configs with microgrid IDs as keys.
+    Args:
+        microgrid_config_files: Path to a single microgrid config file or list of paths.
+        microgrid_config_dir: Directory containing multiple microgrid config files.
 
-        Raises:
-            ValueError: If no config files or dir is provided, or if no config files are found.
-        """
-        if microgrid_config_files is None and microgrid_config_dir is None:
+    Returns:
+        Dictionary of single microgrid formula configs with microgrid IDs as keys.
+
+    Raises:
+        ValueError: If no config files or dir is provided, or if no config files are found.
+    """
+    if microgrid_config_files is None and microgrid_config_dir is None:
+        raise ValueError(
+            "No microgrid config path or directory provided. "
+            "Please provide at least one."
+        )
+
+    config_files: list[Path] = []
+
+    if microgrid_config_files:
+        if isinstance(microgrid_config_files, str):
+            config_files = [Path(microgrid_config_files)]
+        elif isinstance(microgrid_config_files, Path):
+            config_files = [microgrid_config_files]
+        elif isinstance(microgrid_config_files, list):
+            config_files = [Path(f) for f in microgrid_config_files]
+
+    if microgrid_config_dir:
+        if Path(microgrid_config_dir).is_dir():
+            config_files += list(Path(microgrid_config_dir).glob("*.toml"))
+        else:
             raise ValueError(
-                "No microgrid config path or directory provided. "
-                "Please provide at least one."
+                f"Microgrid config directory {microgrid_config_dir} "
+                "is not a directory"
             )
 
-        config_files: list[Path] = []
+    if len(config_files) == 0:
+        raise ValueError(
+            "No microgrid config files found. "
+            "Please provide at least one valid config file."
+        )
 
-        if microgrid_config_files:
-            if isinstance(microgrid_config_files, str):
-                config_files = [Path(microgrid_config_files)]
-            elif isinstance(microgrid_config_files, Path):
-                config_files = [microgrid_config_files]
-            elif isinstance(microgrid_config_files, list):
-                config_files = [Path(f) for f in microgrid_config_files]
+    microgrid_configs: dict[str, "MicrogridConfig"] = {}
 
-        if microgrid_config_dir:
-            if Path(microgrid_config_dir).is_dir():
-                config_files += list(Path(microgrid_config_dir).glob("*.toml"))
-            else:
-                raise ValueError(
-                    f"Microgrid config directory {microgrid_config_dir} "
-                    "is not a directory"
+    for config_path in config_files:
+        if not config_path.is_file():
+            _logger.warning("Config path %s is not a file, skipping.", config_path)
+            continue
+
+        mcfgs = MicrogridConfig.load_from_file(config_path)
+        microgrid_configs.update({str(key): value for key, value in mcfgs.items()})
+
+    return microgrid_configs
+
+
+async def load_configs_from_api(
+    assets_client: AssetsApiClient,
+    microgrid_ids: list[int],
+    populate_formulas: bool = True,
+) -> dict[str, "MicrogridConfig"]:
+    """Load microgrid configs with location metadata from the Assets API.
+
+    Fetches each microgrid's location (latitude, longitude) and optionally
+    populates formulas from the component graph.  This is the canonical
+    single-source loader for both metadata and formulas so that callers
+    (e.g. the forecast pipeline) do not have to re-implement this logic.
+
+    Args:
+        assets_client:
+            Assets API client used to fetch microgrid metadata and the
+            component graph.
+        microgrid_ids:
+            List of microgrid IDs to load configurations for.
+        populate_formulas:
+            When `True` (default), formulas are derived from the component
+            graph and written into each config via
+            `populate_missing_formulas`.  Set to `False` to load
+            metadata only.
+
+    Returns:
+        dict[str, MicrogridConfig]:
+            Mapping from microgrid ID (as string) to the populated
+            `MicrogridConfig` instance. Microgrids that could not be loaded
+            are logged as warnings and omitted, so the returned mapping may
+            cover fewer microgrids than were requested.
+    """
+    configs: dict[str, MicrogridConfig] = {}
+    for microgrid_id in microgrid_ids:
+        try:
+            cfg = await _build_config_from_metadata(assets_client, microgrid_id)
+            if populate_formulas:
+                await populate_missing_formulas(
+                    microgrid_id=microgrid_id,
+                    config=cfg,
+                    assets_client=assets_client,
                 )
-
-        if len(config_files) == 0:
-            raise ValueError(
-                "No microgrid config files found. "
-                "Please provide at least one valid config file."
+        except Exception as exc:  # pylint: disable=broad-except
+            _logger.warning(
+                "Failed to load microgrid %s from the Assets API: %s",
+                microgrid_id,
+                exc,
             )
+            continue
+        configs[str(microgrid_id)] = cfg
 
-        microgrid_configs: dict[str, "MicrogridConfig"] = {}
-
-        for config_path in config_files:
-            if not config_path.is_file():
-                _logger.warning("Config path %s is not a file, skipping.", config_path)
-                continue
-
-            mcfgs = MicrogridConfig.load_from_file(config_path)
-            microgrid_configs.update({str(key): value for key, value in mcfgs.items()})
-
-        return microgrid_configs
-
-    @staticmethod
-    async def load_configs_from_api(
-        assets_client: AssetsApiClient,
-        microgrid_ids: list[int],
-        populate_formulas: bool = True,
-    ) -> dict[str, "MicrogridConfig"]:
-        """Load microgrid configs with location metadata from the Assets API.
-
-        Fetches each microgrid's location (latitude, longitude) and optionally
-        populates formulas from the component graph.  This is the canonical
-        single-source loader for both metadata and formulas so that callers
-        (e.g. the forecast pipeline) do not have to re-implement this logic.
-
-        Args:
-            assets_client:
-                Assets API client used to fetch microgrid metadata and the
-                component graph.
-            microgrid_ids:
-                List of microgrid IDs to load configurations for.
-            populate_formulas:
-                When `True` (default), formulas are derived from the component
-                graph and written into each config via
-                `populate_missing_formulas`.  Set to `False` to load
-                metadata only.
-
-        Returns:
-            dict[str, MicrogridConfig]:
-                Mapping from microgrid ID (as string) to the populated
-                `MicrogridConfig` instance. Microgrids that could not be loaded
-                are logged as warnings and omitted, so the returned mapping may
-                cover fewer microgrids than were requested.
-        """
-        configs: dict[str, MicrogridConfig] = {}
-        for microgrid_id in microgrid_ids:
-            try:
-                cfg = await _build_config_from_metadata(assets_client, microgrid_id)
-                if populate_formulas:
-                    await populate_missing_formulas(
-                        microgrid_id=microgrid_id,
-                        config=cfg,
-                        assets_client=assets_client,
-                    )
-            except Exception as exc:  # pylint: disable=broad-except
-                _logger.warning(
-                    "Failed to load microgrid %s from the Assets API: %s",
-                    microgrid_id,
-                    exc,
-                )
-                continue
-            configs[str(microgrid_id)] = cfg
-
-        return configs
+    return configs
 
 
 def merge_microgrid_configs(
