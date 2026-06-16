@@ -183,7 +183,7 @@ async def load_configs_from_api(
         populate_formulas:
             When `True` (default), formulas are derived from the component
             graph and written into each config via
-            `populate_missing_formulas`.  Set to `False` to load
+            `_populate_missing_formulas`.  Set to `False` to load
             metadata only.
 
     Returns:
@@ -198,7 +198,7 @@ async def load_configs_from_api(
         try:
             cfg = await _build_config_from_metadata(assets_client, microgrid_id)
             if populate_formulas:
-                await populate_missing_formulas(
+                await _populate_missing_formulas(
                     microgrid_id=microgrid_id,
                     config=cfg,
                     assets_client=assets_client,
@@ -256,7 +256,7 @@ def _is_zero_formula(formula: str) -> bool:
         return False
 
 
-async def populate_missing_formulas(
+async def _populate_missing_formulas(
     microgrid_id: int,
     config: "MicrogridConfig",
     assets_client: AssetsApiClient,
