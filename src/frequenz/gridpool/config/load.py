@@ -101,27 +101,24 @@ async def load_configs(
 
 def load_configs_from_files(
     microgrid_config_files: str | Path | list[str | Path] | None = None,
-    microgrid_config_dir: str | Path | None = None,
 ) -> dict[str, "MicrogridConfig"]:
-    """Load multiple microgrid configurations from a file.
+    """Load multiple microgrid configurations from one or more files.
 
     Configs for a single microgrid are expected to be in a single file.
     Later files with the same microgrid ID will overwrite the previous configs.
 
     Args:
         microgrid_config_files: Path to a single microgrid config file or list of paths.
-        microgrid_config_dir: Directory containing multiple microgrid config files.
 
     Returns:
         Dictionary of single microgrid formula configs with microgrid IDs as keys.
 
     Raises:
-        ValueError: If no config files or dir is provided, or if no config files are found.
+        ValueError: If no config files are provided, or if no config files are found.
     """
-    if microgrid_config_files is None and microgrid_config_dir is None:
+    if microgrid_config_files is None:
         raise ValueError(
-            "No microgrid config path or directory provided. "
-            "Please provide at least one."
+            "No microgrid config files provided. Please provide at least one."
         )
 
     config_files: list[Path] = []
@@ -133,15 +130,6 @@ def load_configs_from_files(
             config_files = [microgrid_config_files]
         elif isinstance(microgrid_config_files, list):
             config_files = [Path(f) for f in microgrid_config_files]
-
-    if microgrid_config_dir:
-        if Path(microgrid_config_dir).is_dir():
-            config_files += list(Path(microgrid_config_dir).glob("*.toml"))
-        else:
-            raise ValueError(
-                f"Microgrid config directory {microgrid_config_dir} "
-                "is not a directory"
-            )
 
     if len(config_files) == 0:
         raise ValueError(
