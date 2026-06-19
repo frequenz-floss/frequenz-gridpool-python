@@ -9,7 +9,20 @@ from pathlib import Path
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
 
-from .._graph_generator import ComponentGraphGenerator
+from .._graph_generator import (
+    ComponentGraphGenerator,
+    MicrogridComponentGraph,
+    battery_ids,
+    battery_inverter_ids,
+    battery_meter_ids,
+    chp_ids,
+    chp_meter_ids,
+    ev_charger_ids,
+    ev_charger_meter_ids,
+    grid_meter_ids,
+    pv_inverter_ids,
+    pv_meter_ids,
+)
 from .microgrid import (
     ComponentTypeConfig,
     Metadata,
@@ -153,14 +166,17 @@ def load_configs_from_files(
 async def load_configs_from_api(
     assets_client: AssetsApiClient,
     microgrid_ids: list[int],
-    populate_formulas: bool = True,
 ) -> dict[str, "MicrogridConfig"]:
-    """Load microgrid configs with location metadata from the Assets API.
+    """Load microgrid configs from the Assets API.
 
-    Fetches each microgrid's location (latitude, longitude) and optionally
-    populates formulas from the component graph.  This is the canonical
-    single-source loader for both metadata and formulas so that callers
+    For each microgrid, fetches its location metadata (latitude, longitude) and
+    then derives the per-type formulas and meter/inverter/component IDs from its
+    component graph. This is the canonical single-source loader so that callers
     (e.g. the forecast pipeline) do not have to re-implement this logic.
+
+    The two steps fail independently: a microgrid whose metadata cannot be
+    fetched is skipped, while one whose component graph cannot be derived is
+    still returned with metadata only. Both failures are logged as warnings.
 
     Args:
         assets_client:
@@ -168,36 +184,39 @@ async def load_configs_from_api(
             component graph.
         microgrid_ids:
             List of microgrid IDs to load configurations for.
-        populate_formulas:
-            When `True` (default), formulas are derived from the component
-            graph and written into each config via
-            `_populate_missing_formulas`.  Set to `False` to load
-            metadata only.
 
     Returns:
         dict[str, MicrogridConfig]:
-            Mapping from microgrid ID (as string) to the populated
-            `MicrogridConfig` instance. Microgrids that could not be loaded
-            are logged as warnings and omitted, so the returned mapping may
-            cover fewer microgrids than were requested.
+            Mapping from microgrid ID (as string) to the loaded
+            `MicrogridConfig` instance. Microgrids whose metadata could not be
+            loaded are omitted, so the returned mapping may cover fewer
+            microgrids than were requested.
     """
     configs: dict[str, MicrogridConfig] = {}
     for microgrid_id in microgrid_ids:
         try:
             cfg = await _build_config_from_metadata(assets_client, microgrid_id)
-            if populate_formulas:
-                await _populate_missing_formulas(
-                    microgrid_id=microgrid_id,
-                    config=cfg,
-                    assets_client=assets_client,
-                )
         except Exception as exc:  # pylint: disable=broad-except
             _logger.warning(
-                "Failed to load microgrid %s from the Assets API: %s",
+                "Failed to load microgrid %s metadata from the Assets API: %s",
                 microgrid_id,
                 exc,
             )
             continue
+
+        try:
+            graph = await ComponentGraphGenerator(assets_client).get_component_graph(
+                MicrogridId(microgrid_id)
+            )
+            cfg.ctype = _derive_component_configs(graph)
+        except Exception as exc:  # pylint: disable=broad-except
+            _logger.warning(
+                "Failed to derive component config for microgrid %s from the "
+                "graph: %s",
+                microgrid_id,
+                exc,
+            )
+
         configs[str(microgrid_id)] = cfg
 
     return configs
@@ -229,85 +248,79 @@ async def _build_config_from_metadata(
     )
 
 
-def _is_zero_formula(formula: str) -> bool:
-    """Return whether a derived formula is empty or a constant zero.
+def _derive_component_configs(
+    graph: MicrogridComponentGraph,
+) -> dict[str, ComponentTypeConfig]:
+    """Build the component-type configs for a microgrid from its graph.
 
-    Component types absent from a microgrid yield an empty formula or one that
-    is just a zero constant (e.g. `0.0`), which is not worth storing.
-    """
-    stripped = formula.strip()
-    if not stripped:
-        return True
-    try:
-        return float(stripped) == 0.0
-    except ValueError:
-        return False
-
-
-async def _populate_missing_formulas(
-    microgrid_id: int,
-    config: "MicrogridConfig",
-    assets_client: AssetsApiClient,
-    component_types: set[str] | None = None,
-) -> None:
-    """Populate missing component formulas from the assets API graph.
-
-    Builds a component graph for the given microgrid and derives default formulas
-    for common component types such as consumption, grid, PV, battery, CHP, and
-    EV charging. Existing formulas already present in the configuration are
-    preserved; only missing component-type entries or missing metric formulas
-    are filled in.
+    Derives, per component type, the `AC_POWER_ACTIVE` formula and the
+    meter/inverter/component ID lists straight from the component graph. A
+    component type only appears in the result if the graph yields a non-zero
+    formula or at least one ID for it.
 
     Args:
-        microgrid_id:
-            Identifier of the microgrid whose component graph should be used to
-            derive formulas.
-        config:
-            Microgrid configuration object to update in place.
-        assets_client:
-            Assets API client used to fetch the component graph.
-        component_types:
-            Set of component types to consider when populating formulas. When
-            `None` (the default), every component type a formula can be derived
-            for is considered.
+        graph:
+            Component graph to derive the configuration from.
 
     Returns:
-        None. The configuration is modified in place.
-
-    Notes:
-        - Existing formulas in `config` are never overwritten.
-        - For missing component types, a new `ComponentTypeConfig` is created.
-        - The derived formula is assigned to the `AC_POWER_ACTIVE` metric key
-        for a given component type when missing.
+        Mapping from component type to its derived `ComponentTypeConfig`.
     """
-    cgg = ComponentGraphGenerator(assets_client)
-    graph = await cgg.get_component_graph(MicrogridId(microgrid_id))
 
-    auto_formulas = {
-        "consumption": graph.consumer_formula(),
-        "grid": graph.grid_formula(),
-        "pv": graph.pv_formula(None),
-        "battery": graph.battery_formula(None),
-        "chp": graph.chp_formula(None),
-        "ev": graph.ev_charger_formula(None),
+    def as_formula(derived: str) -> dict[str, str] | None:
+        """Wrap a derived formula for storage, or drop it if empty or zero.
+
+        Component types absent from the microgrid yield an empty or
+        constant-zero formula (e.g. `0.0`), which is not worth storing.
+        """
+        stripped = derived.strip()
+        try:
+            if not stripped or float(stripped) == 0.0:
+                return None
+        except ValueError:
+            pass
+        return {"AC_POWER_ACTIVE": derived}
+
+    configs: dict[str, ComponentTypeConfig] = {
+        "consumption": ComponentTypeConfig(
+            meter=None,
+            inverter=None,
+            component=None,
+            formula=as_formula(graph.consumer_formula()),
+        ),
+        "grid": ComponentTypeConfig(
+            meter=grid_meter_ids(graph) or None,
+            inverter=None,
+            component=None,
+            formula=as_formula(graph.grid_formula()),
+        ),
+        "pv": ComponentTypeConfig(
+            meter=pv_meter_ids(graph) or None,
+            inverter=pv_inverter_ids(graph) or None,
+            component=None,
+            formula=as_formula(graph.pv_formula(None)),
+        ),
+        "battery": ComponentTypeConfig(
+            meter=battery_meter_ids(graph) or None,
+            inverter=battery_inverter_ids(graph) or None,
+            component=battery_ids(graph) or None,
+            formula=as_formula(graph.battery_formula(None)),
+        ),
+        "chp": ComponentTypeConfig(
+            meter=chp_meter_ids(graph) or None,
+            inverter=None,
+            component=chp_ids(graph) or None,
+            formula=as_formula(graph.chp_formula(None)),
+        ),
+        "ev": ComponentTypeConfig(
+            meter=ev_charger_meter_ids(graph) or None,
+            inverter=None,
+            component=ev_charger_ids(graph) or None,
+            formula=as_formula(graph.ev_charger_formula(None)),
+        ),
     }
 
-    for ctype, formula in auto_formulas.items():
-        if component_types is not None and ctype not in component_types:
-            continue
-
-        # Skip component types, whose derived formula
-        # is empty or evaluates to a constant zero.
-        if _is_zero_formula(formula):
-            continue
-
-        cfg = config.ctype.get(ctype)
-        if cfg is None:
-            cfg = ComponentTypeConfig()
-            config.ctype[ctype] = cfg
-
-        if cfg.formula is None:
-            cfg.formula = {}
-
-        if "AC_POWER_ACTIVE" not in cfg.formula:
-            cfg.formula["AC_POWER_ACTIVE"] = formula
+    return {
+        component_type: cfg
+        for component_type, cfg in configs.items()
+        if cfg.formula or cfg.meter or cfg.inverter or cfg.component
+    }
