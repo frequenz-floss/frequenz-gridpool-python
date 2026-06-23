@@ -20,7 +20,7 @@ The following platforms are officially supported (tested):
 
 ## CLI
 
-This package ships the `gridpool-cli` command with two subcommands.
+This package ships the `gridpool-cli` command with three subcommands.
 
 ### Setup
 
@@ -60,6 +60,38 @@ To save without opening a window:
 
 ```bash
 gridpool-cli render-graph <microgrid_id> --no-show --output component_graph.png
+```
+
+### Generate microgrid config
+
+Derive metadata, formulas and component IDs for one or more microgrids from the
+Assets API and print them as dotted-key TOML to stdout:
+
+```bash
+gridpool-cli generate-config <microgrid_id> [<microgrid_id> ...]
+```
+
+Redirect stdout to save the result:
+
+```bash
+gridpool-cli generate-config <microgrid_id> > microgrid.toml
+```
+
+You can layer existing config files with the Assets API by precedence
+(`--default` < Assets API < `--override`). Values from a `--default` file are
+overridden by the API, while a `--override` file keeps its own values and the
+API only fills the gaps:
+
+```bash
+gridpool-cli generate-config <microgrid_id> \
+    --default defaults.toml \
+    --override overrides.toml > microgrid.toml
+```
+
+If no microgrid IDs are given, they are taken from the supplied files:
+
+```bash
+gridpool-cli generate-config --override existing.toml > microgrid.toml
 ```
 
 ## Contributing
