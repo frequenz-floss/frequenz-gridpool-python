@@ -495,6 +495,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#generate-microgrid-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate microgrid config
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1000,6 +1011,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#generate-microgrid-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate microgrid config
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1051,7 +1073,7 @@
 <li><strong>Architectures:</strong> amd64, arm64</li>
 </ul>
 <h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">¤</a></h2>
-<p>This package ships the <code>gridpool-cli</code> command with two subcommands.</p>
+<p>This package ships the <code>gridpool-cli</code> command with three subcommands.</p>
 <h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">¤</a></h3>
 <p>Set the Assets API credentials before running the CLI:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_URL</span><span class="o">=</span><span class="s2">&quot;grpc://...&quot;</span>
@@ -1072,6 +1094,25 @@
 </span></code></pre></div>
 <p>To save without opening a window:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--no-show<span class="w"> </span>--output<span class="w"> </span>component_graph.png
+</span></code></pre></div>
+<h3 id="generate-microgrid-config">Generate microgrid config<a class="headerlink" href="#generate-microgrid-config" title="Permanent link">¤</a></h3>
+<p>Derive metadata, formulas and component IDs for one or more microgrids from the
+Assets API and print them as dotted-key TOML to stdout:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="o">[</span>&lt;microgrid_id&gt;<span class="w"> </span>...<span class="o">]</span>
+</span></code></pre></div>
+<p>Redirect stdout to save the result:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+</span></code></pre></div>
+<p>You can layer existing config files with the Assets API by precedence
+(<code>--default</code> &lt; Assets API &lt; <code>--override</code>). Values from a <code>--default</code> file are
+overridden by the API, while a <code>--override</code> file keeps its own values and the
+API only fills the gaps:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span>--default<span class="w"> </span>defaults.toml<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>--override<span class="w"> </span>overrides.toml<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+</span></code></pre></div>
+<p>If no microgrid IDs are given, they are taken from the supplied files:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>--override<span class="w"> </span>existing.toml<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
 </span></code></pre></div>
 <h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">¤</a></h2>
 <p>If you want to know how to build this project and contribute to it, please
