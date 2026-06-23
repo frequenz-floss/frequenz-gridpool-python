@@ -1,21 +1,39 @@
 # License: MIT
 # Copyright © 2025 Frequenz Energy-as-a-Service GmbH
 
-"""Formula generation from assets API component/connection configurations."""
+"""Component graph generation and per-type queries over the Assets API.
+
+The `ComponentGraphGenerator` builds a `MicrogridComponentGraph` from the
+Platform Assets API. The module-level query functions (e.g. `pv_meter_ids`)
+return component IDs read back out of such a graph.
+"""
 
 import logging
+from collections.abc import Callable
 
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.assets.electrical_component import (
+    Battery,
+    BatteryInverter,
     Breaker,
+    Chp,
     ComponentConnection,
     ElectricalComponent,
+    EvCharger,
+    GridConnectionPoint,
+    Meter,
+    SolarInverter,
 )
 from frequenz.client.common.microgrid import MicrogridId
 from frequenz.client.common.microgrid.electrical_components import ElectricalComponentId
 from frequenz.microgrid_component_graph import ComponentGraph
 
 _logger = logging.getLogger(__name__)
+
+MicrogridComponentGraph = ComponentGraph[
+    ElectricalComponent, ComponentConnection, ElectricalComponentId
+]
+"""Component graph specialized for a microgrid's electrical components."""
 
 
 class ComponentGraphGenerator:
@@ -35,9 +53,7 @@ class ComponentGraphGenerator:
 
     async def get_component_graph(
         self, microgrid_id: MicrogridId
-    ) -> ComponentGraph[
-        ElectricalComponent, ComponentConnection, ElectricalComponentId
-    ]:
+    ) -> MicrogridComponentGraph:
         """Generate a component graph for the given microgrid ID.
 
         Args:
@@ -87,3 +103,79 @@ class ComponentGraphGenerator:
         ](components, connections)
 
         return graph
+
+
+def _ids_of(
+    graph: MicrogridComponentGraph, component_class: type[ElectricalComponent]
+) -> list[int]:
+    """Return the sorted IDs of all components of the given class."""
+    return sorted(int(c.id) for c in graph.components(matching_types=component_class))
+
+
+def _meter_ids_where(
+    graph: MicrogridComponentGraph,
+    is_meter: Callable[[ElectricalComponentId], bool],
+) -> list[int]:
+    """Return the sorted IDs of all meters matching the given classifier."""
+    return sorted(
+        int(m.id) for m in graph.components(matching_types=Meter) if is_meter(m.id)
+    )
+
+
+def grid_meter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the meters directly downstream of a grid connection point.
+
+    Grid meters have no dedicated classifier, so they are derived from the graph
+    topology.
+    """
+    grid_ids = {int(c.id) for c in graph.components(matching_types=GridConnectionPoint)}
+    return sorted(
+        int(m.id)
+        for m in graph.components(matching_types=Meter)
+        if any(int(p.id) in grid_ids for p in graph.predecessors(m.id))
+    )
+
+
+def pv_meter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all PV meters."""
+    return _meter_ids_where(graph, graph.is_pv_meter)
+
+
+def pv_inverter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all solar inverters."""
+    return _ids_of(graph, SolarInverter)
+
+
+def battery_meter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all battery meters."""
+    return _meter_ids_where(graph, graph.is_battery_meter)
+
+
+def battery_inverter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all battery inverters."""
+    return _ids_of(graph, BatteryInverter)
+
+
+def battery_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all batteries."""
+    return _ids_of(graph, Battery)
+
+
+def chp_meter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all CHP meters."""
+    return _meter_ids_where(graph, graph.is_chp_meter)
+
+
+def chp_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all CHPs."""
+    return _ids_of(graph, Chp)
+
+
+def ev_charger_meter_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all EV charger meters."""
+    return _meter_ids_where(graph, graph.is_ev_charger_meter)
+
+
+def ev_charger_ids(graph: MicrogridComponentGraph) -> list[int]:
+    """Return the sorted IDs of all EV chargers."""
+    return _ids_of(graph, EvCharger)

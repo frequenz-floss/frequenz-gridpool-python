@@ -5,6 +5,7 @@
 requires = [
   "setuptools == 82.0.1",
   "setuptools_scm[toml] == 10.0.5",
+  "vcs_versioning < 2",  # setuptools_scm 10.0.5 needs parse_version, dropped in 2.x
   "frequenz-repo-config[lib] == 0.17.0",
 ]
 build-backend = "setuptools.build_meta"
@@ -27,7 +28,6 @@ classifiers = [
 requires-python = ">= 3.11, < 4"
 dependencies = [
   "marshmallow-dataclass >= 8.7.1, < 9",
-  "asyncclick >= 8.3.0.4, < 9",
   "typing-extensions >= 4.14.1, < 5",
   "frequenz-microgrid-component-graph >= 0.4.0, < 0.5",
   "frequenz-client-assets >= 0.3.1, < 0.4",
@@ -42,7 +42,12 @@ name = "Frequenz Energy-as-a-Service GmbH"
 email = "floss@frequenz.com"
 
 [project.optional-dependencies]
+cli = [
+  "asyncclick >= 8.3.0.4, < 9",
+  "tomlkit >= 0.13.0, < 1",
+]
 render-graph = [
+  "frequenz-gridpool[cli]",
   "matplotlib >= 3.7.0, < 4",
   "networkx >= 3.0, < 4",
 ]
@@ -91,6 +96,7 @@ dev-pytest = [
   "pytest-mock == 3.15.1",
   "pytest-asyncio == 1.4.0",
   "async-solipsism == 0.9",
+  "frequenz-gridpool[cli]",  # The tests cover the cli package
 ]
 dev = [
   "frequenz-gridpool[dev-mkdocs,dev-flake8,dev-formatting,dev-mkdocs,dev-mypy,dev-noxfile,dev-pylint,dev-pytest,render-graph]",
