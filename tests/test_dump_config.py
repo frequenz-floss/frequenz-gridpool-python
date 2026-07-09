@@ -7,7 +7,7 @@ import tomllib
 
 from frequenz.gridpool import MicrogridConfig
 from frequenz.gridpool.cli._dump_config import dump_map
-from frequenz.gridpool.config.microgrid import ComponentTypeConfig, Metadata
+from frequenz.gridpool.config.microgrid import ComponentTypeConfig, Metadata, PVConfig
 
 
 def test_dump_map_round_trips() -> None:
@@ -42,3 +42,20 @@ def test_dump_map_omits_empty_and_none() -> None:
 def test_dump_map_empty() -> None:
     """An empty mapping serializes to an empty string."""
     assert dump_map({}) == ""
+
+
+def test_dump_map_renders_whole_floats_as_underscored_ints() -> None:
+    """Whole-number float fields (e.g. peak/rated power) render as `1_736_680`, not `1736680.0`."""
+    configs = {
+        "10": MicrogridConfig(
+            meta=Metadata(microgrid_id=10, latitude=52.5),
+            pv={"1": PVConfig(peak_power=1_736_680.0, rated_power=1_400_000.0)},
+        )
+    }
+
+    text = dump_map(configs)
+
+    assert "10.pv.1.peak_power = 1_736_680\n" in text
+    assert "10.pv.1.rated_power = 1_400_000\n" in text
+    # Genuinely fractional floats are left alone.
+    assert "10.meta.latitude = 52.5\n" in text
