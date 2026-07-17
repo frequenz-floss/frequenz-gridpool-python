@@ -18,6 +18,7 @@ fields are done here, since TOML has no null and `tomlkit` rejects it.
 from typing import Any
 
 import tomlkit
+from tomlkit.items import Integer, Trivia
 
 from frequenz.gridpool import MicrogridConfig
 
@@ -25,6 +26,24 @@ from frequenz.gridpool import MicrogridConfig
 def _is_empty(value: Any) -> bool:
     """Whether a dumped value should be omitted from the output."""
     return value is None or value == {} or value == []
+
+
+def _format_value(value: Any) -> Any:
+    """Render whole-number floats and ints as underscore-grouped ints, e.g. `1_736_680`.
+
+    Args:
+        value: The value about to be written to the TOML document.
+
+    Returns:
+        The formatted value, or `value` itself if it is not a whole number.
+    """
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    if isinstance(value, int) and not isinstance(value, bool):
+        # tomlkit.integer() just does int(raw), dropping underscores; build
+        # the Integer item directly instead.
+        return Integer(value, Trivia(), f"{value:_d}")
+    return value
 
 
 def _iter_leaves(
@@ -73,5 +92,5 @@ def dump_map(configs: dict[str, MicrogridConfig]) -> str:
         if doc.body:
             doc.add(tomlkit.nl())
         for path, value in leaves:
-            doc.append(tomlkit.key(path), value)
+            doc.append(tomlkit.key(path), _format_value(value))
     return tomlkit.dumps(doc)

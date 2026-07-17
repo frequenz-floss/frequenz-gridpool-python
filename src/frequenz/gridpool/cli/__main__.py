@@ -4,14 +4,16 @@
 """CLI tool for gridpool functionality."""
 
 import os
+import tempfile
 from pathlib import Path
 
 import asyncclick as click
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
 
-from frequenz.gridpool import ComponentGraphGenerator, load_configs
+from frequenz.gridpool import ComponentGraphGenerator, MicrogridConfig, load_configs
 from frequenz.gridpool.cli._dump_config import dump_map
+from frequenz.gridpool.cli._patch_config import patch_file
 from frequenz.gridpool.cli._render_graph import ComponentGraphRenderer, RenderOptions
 
 
@@ -123,23 +125,39 @@ async def render_graph(microgrid_id: int, output: str, show: bool) -> None:
     default=None,
     help="Config file whose values override the Assets API (highest precedence).",
 )
+@click.option(
+    "--inplace",
+    is_flag=True,
+    default=False,
+    help="Patch --default in place instead of printing to stdout. Preserves "
+    "existing comments, ordering and formatting in that file; only fills in "
+    "values it is missing. Requires --default.",
+)
 async def generate_config(
     microgrid_ids: tuple[int, ...],
     default_file: Path | None,
     override_file: Path | None,
+    inplace: bool,
 ) -> None:
     """Generate microgrid config from the Assets API as TOML.
 
     Derives metadata, formulas and component IDs for the given microgrid IDs and
     prints the result as dotted-key TOML to stdout.
 
-    `--default` and `--override` each take a config file and are layered with the
-    Assets API by precedence: `--default` < Assets API < `--override`. So a file
-    passed as `--override` keeps its values where it has them (the API only fills
-    gaps), while a file passed as `--default` is overridden by the API. If no
-    microgrid IDs are given, they are taken from the supplied files. Files are
-    only read; redirect stdout to save the result.
+    `--default` and `--override` each take a config file, layered with the Assets
+    API by precedence: `--default` < Assets API < `--override`. If no microgrid
+    IDs are given, they are taken from the supplied files. Files are only read;
+    redirect stdout to save the result.
+
+    With `--inplace`, `--default` is patched directly instead: candidate values
+    come from the Assets API (with `--override` layered on top), and only
+    leaves `--default` is missing are added, preserving its existing comments,
+    field order and formatting. If no microgrid IDs are given, every microgrid
+    already in `--default` is processed.
     """
+    if inplace and default_file is None:
+        raise click.ClickException("--inplace requires --default.")
+
     url = os.environ.get("ASSETS_API_URL")
     key = os.environ.get("ASSETS_API_AUTH_KEY")
     secret = os.environ.get("ASSETS_API_SIGN_SECRET")
@@ -148,18 +166,46 @@ async def generate_config(
             "ASSETS_API_URL, ASSETS_API_AUTH_KEY, ASSETS_API_SIGN_SECRET must be set."
         )
 
+    ids = list(dict.fromkeys(microgrid_ids)) or None
+    if inplace and ids is None:
+        assert default_file is not None
+        ids = sorted(int(mid) for mid in MicrogridConfig.load_from_file(default_file))
+
     async with AssetsApiClient(url, auth_key=key, sign_secret=secret) as client:
-        configs = await load_configs(
-            default_files=default_file,
-            assets_client=client,
-            override_files=override_file,
-            microgrid_ids=list(dict.fromkeys(microgrid_ids)) or None,
-        )
+        if inplace:
+            # default_file is the patch target here, not a merge input.
+            configs = await load_configs(
+                assets_client=client,
+                override_files=override_file,
+                microgrid_ids=ids,
+            )
+        else:
+            configs = await load_configs(
+                default_files=default_file,
+                assets_client=client,
+                override_files=override_file,
+                microgrid_ids=ids,
+            )
 
     if not configs:
         raise click.ClickException("No microgrids could be loaded; nothing to write.")
 
-    click.echo(dump_map(configs), nl=False)
+    if inplace:
+        assert default_file is not None
+        patched = patch_file(default_file, configs)
+        fd, tmp_name = tempfile.mkstemp(
+            dir=default_file.parent, prefix=f".{default_file.name}."
+        )
+        try:
+            with os.fdopen(fd, "w") as tmp_file:
+                tmp_file.write(patched)
+            os.replace(tmp_name, default_file)
+        except BaseException:
+            os.remove(tmp_name)
+            raise
+        click.echo(f"Patched {default_file}", err=True)
+    else:
+        click.echo(dump_map(configs), nl=False)
 
 
 def main() -> None:

@@ -10,7 +10,8 @@
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+* Added an `--inplace` flag to the `generate-config` CLI command: patches `--default` directly instead of printing to stdout, only filling in values it's missing so existing comments, field order and formatting survive untouched.
+* `generate-config` now renders whole-number values (e.g. peak/rated power) as underscore-grouped ints (`1_736_680`) instead of floats (`1736680.0`), avoiding spurious diffs.
 
 ## Bug Fixes
 
