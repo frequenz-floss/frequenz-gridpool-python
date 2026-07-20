@@ -95,7 +95,9 @@ dev-pytest = [
   "pytest-mock == 3.15.1",
   "pytest-asyncio == 1.4.0",
   "async-solipsism == 0.9",
-  "frequenz-gridpool[cli]",  # The tests cover the cli package
+  # The tests cover the cli package and the graph renderer.  render-graph
+  # already pulls in cli.
+  "frequenz-gridpool[render-graph]",
 ]
 dev = [
   "frequenz-gridpool[dev-mkdocs,dev-flake8,dev-formatting,dev-mkdocs,dev-mypy,dev-noxfile,dev-pylint,dev-pytest,render-graph]",
