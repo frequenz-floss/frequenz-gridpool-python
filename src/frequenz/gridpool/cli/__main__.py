@@ -11,7 +11,12 @@ import asyncclick as click
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
 
-from frequenz.gridpool import ComponentGraphGenerator, MicrogridConfig, load_configs
+from frequenz.gridpool import (
+    ComponentGraphConfig,
+    ComponentGraphGenerator,
+    MicrogridConfig,
+    load_configs,
+)
 from frequenz.gridpool.cli._dump_config import dump_map
 from frequenz.gridpool.cli._patch_config import patch_file
 from frequenz.gridpool.cli._render_graph import ComponentGraphRenderer, RenderOptions
@@ -22,6 +27,17 @@ async def cli() -> None:
     """CLI tool for gridpool functionality."""
 
 
+def _graph_config(prefer_meters: bool) -> ComponentGraphConfig | None:
+    """Build the graph config for `--prefer-meters-in-component-formulas`.
+
+    Returns `None` when the flag is not set, so the component graph library's
+    own defaults apply.
+    """
+    if not prefer_meters:
+        return None
+    return ComponentGraphConfig(prefer_meters_in_component_formulas=True)
+
+
 @cli.command()
 @click.argument("microgrid_id", type=int)
 @click.option(
@@ -30,9 +46,17 @@ async def cli() -> None:
     default="{component}",
     help="Prefix format for the output (Supports {microgrid_id} and {component} placeholders).",
 )
+@click.option(
+    "--prefer-meters-in-component-formulas",
+    is_flag=True,
+    default=False,
+    help="Read the meter before the component in the per-category formulas. "
+    "This is the order used before component graph v0.5.0.",
+)
 async def print_formulas(
     microgrid_id: int,
     prefix: str,
+    prefer_meters_in_component_formulas: bool,
 ) -> None:
     """Fetch and print component graph formulas for a microgrid."""
     url = os.environ.get("ASSETS_API_URL")
@@ -48,7 +72,9 @@ async def print_formulas(
         auth_key=key,
         sign_secret=secret,
     ) as client:
-        cgg = ComponentGraphGenerator(client)
+        cgg = ComponentGraphGenerator(
+            client, config=_graph_config(prefer_meters_in_component_formulas)
+        )
 
         graph = await cgg.get_component_graph(MicrogridId(microgrid_id))
         power_formulas = {
@@ -133,11 +159,19 @@ async def render_graph(microgrid_id: int, output: str, show: bool) -> None:
     "existing comments, ordering and formatting in that file; only fills in "
     "values it is missing. Requires --default.",
 )
+@click.option(
+    "--prefer-meters-in-component-formulas",
+    is_flag=True,
+    default=False,
+    help="Read the meter before the component in the per-category formulas. "
+    "This is the order used before component graph v0.5.0.",
+)
 async def generate_config(
     microgrid_ids: tuple[int, ...],
     default_file: Path | None,
     override_file: Path | None,
     inplace: bool,
+    prefer_meters_in_component_formulas: bool,
 ) -> None:
     """Generate microgrid config from the Assets API as TOML.
 
@@ -148,6 +182,10 @@ async def generate_config(
     API by precedence: `--default` < Assets API < `--override`. If no microgrid
     IDs are given, they are taken from the supplied files. Files are only read;
     redirect stdout to save the result.
+
+    With `--prefer-meters-in-component-formulas`, the per-category formulas
+    read the meter before the component, which is the order used before
+    component graph v0.5.0.
 
     With `--inplace`, `--default` is patched directly instead: candidate values
     come from the Assets API (with `--override` layered on top), and only
@@ -178,6 +216,9 @@ async def generate_config(
                 assets_client=client,
                 override_files=override_file,
                 microgrid_ids=ids,
+                component_graph_config=_graph_config(
+                    prefer_meters_in_component_formulas
+                ),
             )
         else:
             configs = await load_configs(
@@ -185,6 +226,9 @@ async def generate_config(
                 assets_client=client,
                 override_files=override_file,
                 microgrid_ids=ids,
+                component_graph_config=_graph_config(
+                    prefer_meters_in_component_formulas
+                ),
             )
 
     if not configs:

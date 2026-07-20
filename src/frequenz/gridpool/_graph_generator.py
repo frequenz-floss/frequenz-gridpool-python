@@ -26,7 +26,7 @@ from frequenz.client.assets.electrical_component import (
 )
 from frequenz.client.common.microgrid import MicrogridId
 from frequenz.client.common.microgrid.electrical_components import ElectricalComponentId
-from frequenz.microgrid_component_graph import ComponentGraph
+from frequenz.microgrid_component_graph import ComponentGraph, ComponentGraphConfig
 
 _logger = logging.getLogger(__name__)
 
@@ -42,14 +42,20 @@ class ComponentGraphGenerator:
     def __init__(
         self,
         client: AssetsApiClient,
+        config: ComponentGraphConfig | None = None,
     ) -> None:
         """Initialize this instance.
 
         Args:
             client: The Assets API client to use for fetching components and
                 connections.
+            config: How to build the graph and generate its formulas. See
+                `ComponentGraphConfig`. Defaults to that class's own defaults.
         """
         self._client: AssetsApiClient = client
+        self._config: ComponentGraphConfig = (
+            config if config is not None else ComponentGraphConfig()
+        )
 
     async def get_component_graph(
         self, microgrid_id: MicrogridId
@@ -100,7 +106,7 @@ class ComponentGraphGenerator:
 
         graph = ComponentGraph[
             ElectricalComponent, ComponentConnection, ElectricalComponentId
-        ](components, connections)
+        ](components, connections, self._config)
 
         return graph
 

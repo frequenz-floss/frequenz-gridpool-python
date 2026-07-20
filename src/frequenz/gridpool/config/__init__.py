@@ -3,6 +3,8 @@
 
 """Microgrid configuration data model and loading."""
 
+from frequenz.microgrid_component_graph import ComponentGraphConfig, FormulaOverrides
+
 from .load import (
     load_configs,
     load_configs_from_api,
@@ -24,8 +26,10 @@ from .microgrid import (
 __all__ = [
     "BatteryConfig",
     "ComponentCategory",
+    "ComponentGraphConfig",
     "ComponentType",
     "ComponentTypeConfig",
+    "FormulaOverrides",
     "Metadata",
     "MicrogridConfig",
     "PVConfig",
