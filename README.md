@@ -44,6 +44,15 @@ Optional prefix formatting:
 gridpool-cli print-formulas <microgrid_id> --prefix "{microgrid_id}.{component}"
 ```
 
+The per-category formulas (`pv`, `battery`, `chp`, `ev`) read the component
+first and use the meter as the fallback. Use
+`--prefer-meters-in-component-formulas` for the opposite order, which is what
+versions before component graph v0.5.0 produced:
+
+```bash
+gridpool-cli print-formulas <microgrid_id> --prefer-meters-in-component-formulas
+```
+
 ### Render component graph
 
 Rendering requires optional dependencies. Install with:
@@ -92,6 +101,14 @@ If no microgrid IDs are given, they are taken from the supplied files:
 
 ```bash
 gridpool-cli generate-config --override existing.toml > microgrid.toml
+```
+
+`--prefer-meters-in-component-formulas` works here too, so a regenerated
+config can keep the meter-first order of the per-category formulas:
+
+```bash
+gridpool-cli generate-config <microgrid_id> \
+    --prefer-meters-in-component-formulas > microgrid.toml
 ```
 
 ## Contributing
