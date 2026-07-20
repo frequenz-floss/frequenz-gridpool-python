@@ -63,4 +63,4 @@ async def test_formula_generation() -> None:
     graph = await g.get_component_graph(MicrogridId(10))
 
     assert graph.grid_formula() == "COALESCE(#2, #4, 0.0) + #3"
-    assert graph.pv_formula(None) == "COALESCE(#2, #4, 0.0)"
+    assert graph.pv_formula(None) == "COALESCE(#4, #2, 0.0)"

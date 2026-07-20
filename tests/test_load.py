@@ -66,7 +66,7 @@ async def test_load_configs_from_api_derives_formulas_and_ids() -> None:
     configs = await load_configs_from_api(_mock_client(), [10])
 
     cfg = configs["10"]
-    assert cfg.ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"}
+    assert cfg.ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
     assert cfg.ctype["pv"].inverter == [4]
     assert cfg.ctype["pv"].meter == [2]
     assert cfg.ctype["grid"].meter == [2, 3]
@@ -94,7 +94,7 @@ async def test_derive_component_configs_builds_formulas_and_ids() -> None:
 
     configs = _derive_component_configs(graph)
 
-    assert configs["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"}
+    assert configs["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
     assert configs["pv"].inverter == [4]
     assert configs["pv"].meter == [2]
     assert configs["grid"].meter == [2, 3]
