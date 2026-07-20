@@ -8,6 +8,7 @@ from pathlib import Path
 
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
+from frequenz.microgrid_component_graph import ComponentGraphConfig
 
 from .._graph_generator import (
     ComponentGraphGenerator,
@@ -38,6 +39,7 @@ async def load_configs(
     assets_client: AssetsApiClient | None = None,
     override_files: str | Path | list[str | Path] | None = None,
     microgrid_ids: list[int] | None = None,
+    component_graph_config: ComponentGraphConfig | None = None,
 ) -> dict[str, "MicrogridConfig"]:
     """Load configs from up to three sources and merge them in layers.
 
@@ -72,6 +74,10 @@ async def load_configs(
             Optional explicit microgrid IDs to fetch from the Assets API.
             When given, these replace the IDs derived from the files, so the
             Assets API layer can be used without any files.
+        component_graph_config:
+            How to build the component graph and generate its formulas.  See
+            `ComponentGraphConfig`.  Defaults to that class's own defaults.
+            Requires an `assets_client`.
 
     Returns:
         dict[str, MicrogridConfig]:
@@ -80,13 +86,17 @@ async def load_configs(
 
     Raises:
         ValueError: If none of the three sources is provided, or if
-            `microgrid_ids` is given without an `assets_client`.
+            `microgrid_ids` or `component_graph_config` is given without an
+            `assets_client`.
     """
     if default_files is None and assets_client is None and override_files is None:
         raise ValueError("At least one config source must be provided.")
 
     if microgrid_ids is not None and assets_client is None:
         raise ValueError("microgrid_ids requires an assets_client.")
+
+    if component_graph_config is not None and assets_client is None:
+        raise ValueError("component_graph_config requires an assets_client.")
 
     configs: dict[str, MicrogridConfig] = {}
     if default_files is not None:
@@ -106,6 +116,7 @@ async def load_configs(
         assets_configs = await load_configs_from_api(
             assets_client=assets_client,
             microgrid_ids=microgrid_ids,
+            component_graph_config=component_graph_config,
         )
         configs = merge_config_maps(base=configs, override=assets_configs)
 
@@ -166,6 +177,7 @@ def load_configs_from_files(
 async def load_configs_from_api(
     assets_client: AssetsApiClient,
     microgrid_ids: list[int],
+    component_graph_config: ComponentGraphConfig | None = None,
 ) -> dict[str, "MicrogridConfig"]:
     """Load microgrid configs from the Assets API.
 
@@ -184,6 +196,9 @@ async def load_configs_from_api(
             component graph.
         microgrid_ids:
             List of microgrid IDs to load configurations for.
+        component_graph_config:
+            How to build the component graph and generate its formulas.  See
+            `ComponentGraphConfig`.  Defaults to that class's own defaults.
 
     Returns:
         dict[str, MicrogridConfig]:
@@ -192,6 +207,7 @@ async def load_configs_from_api(
             loaded are omitted, so the returned mapping may cover fewer
             microgrids than were requested.
     """
+    generator = ComponentGraphGenerator(assets_client, config=component_graph_config)
     configs: dict[str, MicrogridConfig] = {}
     for microgrid_id in microgrid_ids:
         try:
@@ -205,9 +221,7 @@ async def load_configs_from_api(
             continue
 
         try:
-            graph = await ComponentGraphGenerator(assets_client).get_component_graph(
-                MicrogridId(microgrid_id)
-            )
+            graph = await generator.get_component_graph(MicrogridId(microgrid_id))
             cfg.ctype = _derive_component_configs(graph)
         except Exception as exc:  # pylint: disable=broad-except
             _logger.warning(

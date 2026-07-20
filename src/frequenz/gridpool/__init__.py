@@ -3,6 +3,8 @@
 
 """High-level interface to grid pools for the Frequenz platform."""
 
+from frequenz.microgrid_component_graph import ComponentGraphConfig, FormulaOverrides
+
 from ._graph_generator import ComponentGraphGenerator
 from .config import (
     Metadata,
@@ -15,7 +17,9 @@ from .config import (
 )
 
 __all__ = [
+    "ComponentGraphConfig",
     "ComponentGraphGenerator",
+    "FormulaOverrides",
     "Metadata",
     "MicrogridConfig",
     "load_configs",

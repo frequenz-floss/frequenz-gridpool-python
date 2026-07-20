@@ -5,6 +5,7 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.assets.electrical_component import (
     ComponentConnection,
@@ -15,12 +16,14 @@ from frequenz.client.assets.electrical_component import (
 from frequenz.client.common.microgrid import MicrogridId
 from frequenz.client.common.microgrid.electrical_components import ElectricalComponentId
 
+from frequenz.gridpool import ComponentGraphConfig
 from frequenz.gridpool._graph_generator import (
     ComponentGraphGenerator,
     MicrogridComponentGraph,
 )
 from frequenz.gridpool.config.load import (
     _derive_component_configs,
+    load_configs,
     load_configs_from_api,
 )
 
@@ -72,6 +75,45 @@ async def test_load_configs_from_api_derives_formulas_and_ids() -> None:
     assert cfg.ctype["grid"].meter == [2, 3]
     # Component types absent from the microgrid are not created.
     assert set(cfg.ctype) == {"grid", "consumption", "pv"}
+
+
+async def test_load_configs_from_api_honours_the_component_graph_config() -> None:
+    """A component graph config reaches the derived formulas."""
+    configs = await load_configs_from_api(
+        _mock_client(),
+        [10],
+        component_graph_config=ComponentGraphConfig(
+            prefer_meters_in_component_formulas=True
+        ),
+    )
+
+    # Meter first, the opposite of the default order asserted above.
+    ctype = configs["10"].ctype
+    assert ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"}
+
+
+async def test_load_configs_forwards_the_component_graph_config() -> None:
+    """`load_configs` passes its component graph config down to the API layer."""
+    configs = await load_configs(
+        assets_client=_mock_client(),
+        microgrid_ids=[10],
+        component_graph_config=ComponentGraphConfig(
+            prefer_meters_in_component_formulas=True
+        ),
+    )
+
+    assert configs["10"].ctype["pv"].formula == {
+        "AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"
+    }
+
+
+async def test_load_configs_rejects_a_component_graph_config_without_a_client() -> None:
+    """A component graph config is only meaningful with an Assets API client."""
+    with pytest.raises(ValueError, match="requires an assets_client"):
+        await load_configs(
+            default_files=[],
+            component_graph_config=ComponentGraphConfig(),
+        )
 
 
 async def test_load_configs_from_api_keeps_metadata_when_graph_fails() -> None:

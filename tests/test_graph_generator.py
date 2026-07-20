@@ -15,11 +15,12 @@ from frequenz.client.assets.electrical_component import (
 from frequenz.client.common.microgrid import MicrogridId
 from frequenz.client.common.microgrid.electrical_components import ElectricalComponentId
 
+from frequenz.gridpool import ComponentGraphConfig
 from frequenz.gridpool._graph_generator import ComponentGraphGenerator
 
 
-async def test_formula_generation() -> None:
-    """Test formula generation from component graph created from Assets API."""
+def _mock_client() -> MagicMock:
+    """Mock an Assets API client: grid 1 -> meter 2 -> solar inverter 4, + meter 3."""
     assets_client_mock = MagicMock(spec=AssetsApiClient)
     assets_client_mock.list_microgrid_electrical_components = AsyncMock(
         return_value=[
@@ -59,8 +60,25 @@ async def test_formula_generation() -> None:
         ]
     )
 
-    g = ComponentGraphGenerator(assets_client_mock)
+    return assets_client_mock
+
+
+async def test_formula_generation() -> None:
+    """Test formula generation from component graph created from Assets API."""
+    g = ComponentGraphGenerator(_mock_client())
     graph = await g.get_component_graph(MicrogridId(10))
 
     assert graph.grid_formula() == "COALESCE(#2, #4, 0.0) + #3"
     assert graph.pv_formula(None) == "COALESCE(#4, #2, 0.0)"
+
+
+async def test_formula_generation_with_a_component_graph_config() -> None:
+    """A component graph config reaches the generated formulas."""
+    g = ComponentGraphGenerator(
+        _mock_client(),
+        ComponentGraphConfig(prefer_meters_in_component_formulas=True),
+    )
+    graph = await g.get_component_graph(MicrogridId(10))
+
+    # Meter first, the opposite of the default order.
+    assert graph.pv_formula(None) == "COALESCE(#2, #4, 0.0)"
