@@ -1086,33 +1086,44 @@
 <p>Optional prefix formatting:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--prefix<span class="w"> </span><span class="s2">&quot;{microgrid_id}.{component}&quot;</span>
 </span></code></pre></div>
+<p>The per-category formulas (<code>pv</code>, <code>battery</code>, <code>chp</code>, <code>ev</code>) read the component
+first and use the meter as the fallback. Use
+<code>--prefer-meters-in-component-formulas</code> for the opposite order, which is what
+versions before component graph v0.5.0 produced:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--prefer-meters-in-component-formulas
+</span></code></pre></div>
 <h3 id="render-component-graph">Render component graph<a class="headerlink" href="#render-component-graph" title="Permanent link">¤</a></h3>
 <p>Rendering requires optional dependencies. Install with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>frequenz-gridpool<span class="o">[</span>render-graph<span class="o">]</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pip<span class="w"> </span>install<span class="w"> </span>frequenz-gridpool<span class="o">[</span>render-graph<span class="o">]</span>
 </span></code></pre></div>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;
 </span></code></pre></div>
 <p>To save without opening a window:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--no-show<span class="w"> </span>--output<span class="w"> </span>component_graph.png
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gridpool-cli<span class="w"> </span>render-graph<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--no-show<span class="w"> </span>--output<span class="w"> </span>component_graph.png
 </span></code></pre></div>
 <h3 id="generate-microgrid-config">Generate microgrid config<a class="headerlink" href="#generate-microgrid-config" title="Permanent link">¤</a></h3>
 <p>Derive metadata, formulas and component IDs for one or more microgrids from the
 Assets API and print them as dotted-key TOML to stdout:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="o">[</span>&lt;microgrid_id&gt;<span class="w"> </span>...<span class="o">]</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="o">[</span>&lt;microgrid_id&gt;<span class="w"> </span>...<span class="o">]</span>
 </span></code></pre></div>
 <p>Redirect stdout to save the result:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
 </span></code></pre></div>
 <p>You can layer existing config files with the Assets API by precedence
 (<code>--default</code> &lt; Assets API &lt; <code>--override</code>). Values from a <code>--default</code> file are
 overridden by the API, while a <code>--override</code> file keeps its own values and the
 API only fills the gaps:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span>--default<span class="w"> </span>defaults.toml<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span>--override<span class="w"> </span>overrides.toml<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span>--default<span class="w"> </span>defaults.toml<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span>--override<span class="w"> </span>overrides.toml<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
 </span></code></pre></div>
 <p>If no microgrid IDs are given, they are taken from the supplied files:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>--override<span class="w"> </span>existing.toml<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>--override<span class="w"> </span>existing.toml<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+</span></code></pre></div>
+<p><code>--prefer-meters-in-component-formulas</code> works here too, so a regenerated
+config can keep the meter-first order of the per-category formulas:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span>--prefer-meters-in-component-formulas<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
 </span></code></pre></div>
 <h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">¤</a></h2>
 <p>If you want to know how to build this project and contribute to it, please
