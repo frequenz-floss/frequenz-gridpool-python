@@ -14,4 +14,6 @@
 
 ## Bug Fixes
 
-<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
+- `load_configs()` and `load_configs_from_files()` now accept directory paths in
+  addition to individual TOML files. When a directory is provided, all
+  `*.toml` files in that directory are loaded in sorted order.
