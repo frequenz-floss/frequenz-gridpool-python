@@ -147,6 +147,37 @@ def test_load_configs(mocker: MockerFixture) -> None:
     assert battery_system.capacity == 10000
 
 
+def test_load_configs_from_directory(tmp_path: Path) -> None:
+    """Loading from a directory picks up its TOML files."""
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    (config_dir / "mg-1.toml").write_text(
+        """
+        1.meta.microgrid_id = 1
+        1.meta.name = "Test Grid 1"
+        1.meta.gid = 1
+        """,
+        encoding="utf-8",
+    )
+    (config_dir / "mg-2.toml").write_text(
+        """
+        2.meta.microgrid_id = 2
+        2.meta.name = "Test Grid 2"
+        2.meta.gid = 2
+        """,
+        encoding="utf-8",
+    )
+    (config_dir / "ignore.txt").write_text("not toml", encoding="utf-8")
+
+    configs = load_configs_from_files(config_dir)
+
+    assert set(configs) == {"1", "2"}
+    assert configs["1"].meta is not None
+    assert configs["1"].meta.name == "Test Grid 1"
+    assert configs["2"].meta is not None
+    assert configs["2"].meta.name == "Test Grid 2"
+
+
 def _assert_optional_field(value: float | None, expected: float) -> None:
     """Validate an optional field.
 

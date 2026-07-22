@@ -3,6 +3,7 @@
 
 """Tests for loading microgrid configs from the Assets API."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -104,6 +105,32 @@ async def test_load_configs_forwards_the_component_graph_config() -> None:
 
     assert configs["10"].ctype["pv"].formula == {
         "AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"
+    }
+
+
+async def test_load_configs_accepts_directories_for_file_layers(
+    tmp_path: Path,
+) -> None:
+    """`load_configs` can derive API IDs from config files found in a directory."""
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    (config_dir / "mg-10.toml").write_text(
+        """
+        10.meta.microgrid_id = 10
+        10.meta.name = "Directory Grid"
+        10.meta.gid = 10
+        """,
+        encoding="utf-8",
+    )
+
+    configs = await load_configs(
+        default_files=config_dir,
+        assets_client=_mock_client(),
+    )
+
+    assert "10" in configs
+    assert configs["10"].ctype["pv"].formula == {
+        "AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"
     }
 
 
