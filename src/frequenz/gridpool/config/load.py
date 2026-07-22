@@ -24,12 +24,7 @@ from .._graph_generator import (
     pv_inverter_ids,
     pv_meter_ids,
 )
-from .microgrid import (
-    ComponentTypeConfig,
-    Metadata,
-    MicrogridConfig,
-    merge_config_maps,
-)
+from .microgrid import ComponentTypeConfig, Metadata, MicrogridConfig, merge_config_maps
 
 _logger = logging.getLogger(__name__)
 
@@ -123,16 +118,20 @@ async def load_configs(
     return merge_config_maps(base=configs, override=override_configs)
 
 
+# pylint: disable=too-many-branches
 def load_configs_from_files(
     microgrid_config_files: str | Path | list[str | Path] | None = None,
 ) -> dict[str, "MicrogridConfig"]:
-    """Load multiple microgrid configurations from one or more files.
+    """Load multiple microgrid configurations from one or more paths/files.
 
     Configs for a single microgrid are expected to be in a single file.
     Later files with the same microgrid ID will overwrite the previous configs.
+    Directory paths are expanded to all `.toml` files they contain.
 
     Args:
-        microgrid_config_files: Path to a single microgrid config file or list of paths.
+        microgrid_config_files:
+            Path to a single microgrid config file or directory, or a list of
+            file and directory paths.
 
     Returns:
         Dictionary of single microgrid formula configs with microgrid IDs as keys.
@@ -148,12 +147,18 @@ def load_configs_from_files(
     config_files: list[Path] = []
 
     if microgrid_config_files:
-        if isinstance(microgrid_config_files, str):
-            config_files = [Path(microgrid_config_files)]
-        elif isinstance(microgrid_config_files, Path):
-            config_files = [microgrid_config_files]
-        elif isinstance(microgrid_config_files, list):
-            config_files = [Path(f) for f in microgrid_config_files]
+        # normalize to a list of items
+        if isinstance(microgrid_config_files, (str, Path)):
+            paths = [microgrid_config_files]
+        else:
+            paths = microgrid_config_files
+
+        for item in paths:
+            config_path = Path(item)
+            if config_path.is_dir():
+                config_files.extend(sorted(config_path.glob("*.toml")))
+            else:
+                config_files.append(config_path)
 
     if len(config_files) == 0:
         raise ValueError(

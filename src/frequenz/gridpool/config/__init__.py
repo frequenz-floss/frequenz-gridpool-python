@@ -5,11 +5,7 @@
 
 from frequenz.microgrid_component_graph import ComponentGraphConfig, FormulaOverrides
 
-from .load import (
-    load_configs,
-    load_configs_from_api,
-    load_configs_from_files,
-)
+from .load import load_configs, load_configs_from_api, load_configs_from_files
 from .microgrid import (
     BatteryConfig,
     ComponentCategory,
