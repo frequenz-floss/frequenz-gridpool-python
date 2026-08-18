@@ -301,18 +301,18 @@ class MicrogridConfig:
         """Load microgrid configurations from table entries.
 
         Args:
-            data: The loaded TOML data.
+            data: The table mapping microgrid IDs to their entries.
 
         Returns:
             A dict mapping microgrid IDs to MicrogridConfig instances.
 
         Raises:
-            ValueError: If top-level keys are not numeric microgrid IDs
+            ValueError: If the keys are not numeric microgrid IDs
                 or if there is a microgrid ID mismatch.
             TypeError: If microgrid data is not a dict.
         """
         if not all(str(k).isdigit() for k in data.keys()):
-            raise ValueError("All top-level keys must be numeric microgrid IDs.")
+            raise ValueError("All microgrid keys must be numeric microgrid IDs.")
 
         mgrids = {}
         for mid, entry in data.items():
@@ -338,6 +338,51 @@ class MicrogridConfig:
         return mgrids
 
     @classmethod
+    def _microgrid_table(cls, data: dict[str, Any], source: str) -> dict[str, Any]:
+        """Pick the microgrid entries out of a parsed config document.
+
+        Entries live under `assets.microgrids`. A document without an `assets`
+        table is read in the deprecated layout, where the entries sit at the
+        top level.
+
+        Args:
+            data: The parsed TOML document.
+            source: Name of the document, used in messages.
+
+        Returns:
+            The table mapping microgrid IDs to their entries.
+
+        Raises:
+            TypeError: If `assets` is not a table.
+            ValueError: If both layouts are present, which means a
+                half-migrated file rather than a merge.
+        """
+        if "assets" not in data:
+            _logger.warning(
+                "%s: top-level microgrid IDs are deprecated, "
+                "nest the entries under `assets.microgrids` instead.",
+                source,
+            )
+            return data
+
+        assets = data["assets"]
+        if not isinstance(assets, dict):
+            raise TypeError(f"{source}: `assets` must be a table, got {type(assets)}")
+
+        if unprefixed := sorted(k for k in data if k != "assets"):
+            raise ValueError(
+                f"{source}: keys {unprefixed} sit outside `assets` while the file "
+                "already has an `assets` table; move them under `assets.microgrids`."
+            )
+
+        microgrids = assets.get("microgrids", {})
+        if not isinstance(microgrids, dict):
+            raise TypeError(
+                f"{source}: `assets.microgrids` must be a table, got {type(microgrids)}"
+            )
+        return microgrids
+
+    @classmethod
     def load_from_file(cls, config_path: Path) -> dict[str, Self]:
         """
         Load and validate configuration settings from a TOML file.
@@ -353,7 +398,7 @@ class MicrogridConfig:
 
         assert isinstance(data, dict)
 
-        return cls._load_table_entries(data)
+        return cls._load_table_entries(cls._microgrid_table(data, str(config_path)))
 
 
 def merge_microgrid_configs(

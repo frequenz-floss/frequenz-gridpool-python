@@ -3,6 +3,7 @@
 
 """Tests for the frequenz.lib.notebooks.config module."""
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,11 @@ import pytest
 from pytest_mock import MockerFixture
 
 from frequenz.gridpool import MicrogridConfig
-from frequenz.gridpool.config import ComponentTypeConfig, load_configs_from_files
+from frequenz.gridpool.config import (
+    ComponentTypeConfig,
+    load_configs,
+    load_configs_from_files,
+)
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
@@ -160,3 +165,78 @@ def _assert_optional_field(value: float | None, expected: float) -> None:
     if value is not None:
         if value != expected:
             raise AssertionError(f"Expected {expected}, got {value}")
+
+
+_PREFIXED_TOML = """
+assets.microgrids.1.meta.microgrid_id = 1
+assets.microgrids.1.meta.name = "Test Grid"
+assets.microgrids.1.ctype.pv.meter = [101, 102]
+"""
+
+_LEGACY_TOML = """
+1.meta.microgrid_id = 1
+1.meta.name = "Test Grid"
+1.ctype.pv.meter = [101, 102]
+"""
+
+
+def _write(tmp_path: Path, name: str, text: str) -> Path:
+    """Write `text` to `name` under `tmp_path` and return the path."""
+    path = tmp_path / name
+    path.write_text(text)
+    return path
+
+
+def test_load_prefixed(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    """Entries under `assets.microgrids` load without a deprecation warning."""
+    configs = MicrogridConfig.load_from_file(
+        _write(tmp_path, "prefixed.toml", _PREFIXED_TOML)
+    )
+
+    assert configs["1"].meta.name == "Test Grid"
+    assert configs["1"].component_type_ids("pv") == [101, 102]
+    assert "deprecated" not in caplog.text
+
+
+def test_load_legacy_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    """Top-level entries still load, but warn and name the file."""
+    path = _write(tmp_path, "legacy.toml", _LEGACY_TOML)
+
+    with caplog.at_level(logging.WARNING):
+        configs = MicrogridConfig.load_from_file(path)
+
+    assert configs["1"].meta.name == "Test Grid"
+    assert "deprecated" in caplog.text
+    assert str(path) in caplog.text
+
+
+def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
+    """A half-migrated file with both layouts is an error, not a merge."""
+    path = _write(
+        tmp_path,
+        "mixed.toml",
+        _PREFIXED_TOML + '2.meta.microgrid_id = 2\n2.meta.name = "Other Grid"\n',
+    )
+
+    with pytest.raises(ValueError, match="outside `assets`"):
+        MicrogridConfig.load_from_file(path)
+
+
+def test_load_assets_without_microgrids(tmp_path: Path) -> None:
+    """An `assets` table without microgrids yields no configs and no warning."""
+    path = _write(tmp_path, "other.toml", 'assets.gridpool.7.name = "GP"\n')
+
+    assert not MicrogridConfig.load_from_file(path)
+
+
+async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
+    """Layers of either layout merge as usual, since layout is resolved on load."""
+    base = _write(tmp_path, "base.toml", _PREFIXED_TOML)
+    override = _write(
+        tmp_path, "override.toml", '1.meta.microgrid_id = 1\n1.meta.name = "Renamed"\n'
+    )
+
+    configs = await load_configs(default_files=base, override_files=override)
+
+    assert configs["1"].meta.name == "Renamed"
+    assert configs["1"].component_type_ids("pv") == [101, 102]
