@@ -24,6 +24,7 @@ from .._graph_generator import (
     pv_inverter_ids,
     pv_meter_ids,
 )
+from .assets import AssetsConfig
 from .microgrid import (
     ComponentTypeConfig,
     Metadata,
@@ -168,7 +169,7 @@ def load_configs_from_files(
             _logger.warning("Config path %s is not a file, skipping.", config_path)
             continue
 
-        mcfgs = MicrogridConfig.load_from_file(config_path)
+        mcfgs = AssetsConfig.load_from_file(config_path).microgrids
         microgrid_configs.update({str(key): value for key, value in mcfgs.items()})
 
     return microgrid_configs

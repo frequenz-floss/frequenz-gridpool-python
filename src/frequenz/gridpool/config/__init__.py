@@ -5,6 +5,7 @@
 
 from frequenz.microgrid_component_graph import ComponentGraphConfig, FormulaOverrides
 
+from .assets import AssetsConfig
 from .load import (
     load_configs,
     load_configs_from_api,
@@ -31,6 +32,7 @@ __all__ = [
     "ComponentTypeConfig",
     "FormulaOverrides",
     "Metadata",
+    "AssetsConfig",
     "MicrogridConfig",
     "PVConfig",
     "WindConfig",

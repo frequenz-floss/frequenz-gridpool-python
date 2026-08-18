@@ -5,11 +5,9 @@
 
 import logging
 import re
-import tomllib
 from copy import deepcopy
 from dataclasses import field
 from datetime import datetime
-from pathlib import Path
 from typing import Any, ClassVar, Literal, Self, Type, cast, get_args
 
 from marshmallow import Schema
@@ -336,69 +334,6 @@ class MicrogridConfig:
             mgrids[mid] = mgrid
 
         return mgrids
-
-    @classmethod
-    def _microgrid_table(cls, data: dict[str, Any], source: str) -> dict[str, Any]:
-        """Pick the microgrid entries out of a parsed config document.
-
-        Entries live under `assets.microgrids`. A document without an `assets`
-        table is read in the deprecated layout, where the entries sit at the
-        top level.
-
-        Args:
-            data: The parsed TOML document.
-            source: Name of the document, used in messages.
-
-        Returns:
-            The table mapping microgrid IDs to their entries.
-
-        Raises:
-            TypeError: If `assets` is not a table.
-            ValueError: If both layouts are present, which means a
-                half-migrated file rather than a merge.
-        """
-        if "assets" not in data:
-            _logger.warning(
-                "%s: top-level microgrid IDs are deprecated, "
-                "nest the entries under `assets.microgrids` instead.",
-                source,
-            )
-            return data
-
-        assets = data["assets"]
-        if not isinstance(assets, dict):
-            raise TypeError(f"{source}: `assets` must be a table, got {type(assets)}")
-
-        if unprefixed := sorted(k for k in data if k != "assets"):
-            raise ValueError(
-                f"{source}: keys {unprefixed} sit outside `assets` while the file "
-                "already has an `assets` table; move them under `assets.microgrids`."
-            )
-
-        microgrids = assets.get("microgrids", {})
-        if not isinstance(microgrids, dict):
-            raise TypeError(
-                f"{source}: `assets.microgrids` must be a table, got {type(microgrids)}"
-            )
-        return microgrids
-
-    @classmethod
-    def load_from_file(cls, config_path: Path) -> dict[str, Self]:
-        """
-        Load and validate configuration settings from a TOML file.
-
-        Args:
-            config_path: the path to the TOML configuration file.
-
-        Returns:
-            A dict mapping microgrid IDs to MicrogridConfig instances.
-        """
-        with config_path.open("rb") as f:
-            data = tomllib.load(f)
-
-        assert isinstance(data, dict)
-
-        return cls._load_table_entries(cls._microgrid_table(data, str(config_path)))
 
 
 def merge_microgrid_configs(
