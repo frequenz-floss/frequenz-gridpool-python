@@ -1076,15 +1076,15 @@
 <p>This package ships the <code>gridpool-cli</code> command with three subcommands.</p>
 <h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">¤</a></h3>
 <p>Set the Assets API credentials before running the CLI:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_URL</span><span class="o">=</span><span class="s2">&quot;grpc://...&quot;</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_AUTH_KEY</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_SIGN_SECRET</span><span class="o">=</span><span class="s2">&quot;...&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_URL</span><span class="o">=</span><span class="s2">"grpc://..."</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_AUTH_KEY</span><span class="o">=</span><span class="s2">"..."</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_SIGN_SECRET</span><span class="o">=</span><span class="s2">"..."</span>
 </span></code></pre></div>
 <h3 id="print-component-formulas">Print component formulas<a class="headerlink" href="#print-component-formulas" title="Permanent link">¤</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;
 </span></code></pre></div>
 <p>Optional prefix formatting:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--prefix<span class="w"> </span><span class="s2">&quot;{microgrid_id}.{component}&quot;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span>--prefix<span class="w"> </span><span class="s2">"{microgrid_id}.{component}"</span>
 </span></code></pre></div>
 <p>The per-category formulas (<code>pv</code>, <code>battery</code>, <code>chp</code>, <code>ev</code>) read the component
 first and use the meter as the fallback. Use
