@@ -6,22 +6,24 @@
 
 ## Upgrading
 
-- Microgrid config files should nest their entries under `assets.microgrids`:
+- `MicrogridConfig.load_from_file` is replaced by `AssetsConfig.load_from_file`,
+  which returns the whole document rather than just its microgrids:
 
-  ```toml
-  assets.microgrids.23.meta.name = "..."
+  ```python
+  configs = AssetsConfig.load_from_file(path).microgrids
   ```
 
-  Bare microgrid IDs at the top level still load but log a deprecation warning,
-  and support for them will be removed. The namespace keeps generated inventory
-  data apart from operator settings under `app.*`, so a config file can carry
-  both without its keys colliding.
-
-  A file mixing both layouts is rejected.
+  `load_configs_from_files` and `load_configs` are unchanged.
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+- `AssetsConfig` gives the `assets` namespace a type, so the entities still to
+  come are added as fields rather than as more dict lookups. Entries are checked
+  against the ID they are filed under wherever the class is loaded, not only via
+  `load_from_file`.
+
+  Entity tables a version does not know are ignored with a warning, so a reader
+  keeps working against files that already carry newer entities.
 
 ## Bug Fixes
 

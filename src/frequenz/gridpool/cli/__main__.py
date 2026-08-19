@@ -12,9 +12,9 @@ from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
 
 from frequenz.gridpool import (
+    AssetsConfig,
     ComponentGraphConfig,
     ComponentGraphGenerator,
-    MicrogridConfig,
     load_configs,
 )
 from frequenz.gridpool.cli._dump_config import dump_map
@@ -207,7 +207,9 @@ async def generate_config(
     ids = list(dict.fromkeys(microgrid_ids)) or None
     if inplace and ids is None:
         assert default_file is not None
-        ids = sorted(int(mid) for mid in MicrogridConfig.load_from_file(default_file))
+        ids = sorted(
+            int(mid) for mid in AssetsConfig.load_from_file(default_file).microgrids
+        )
 
     async with AssetsApiClient(url, auth_key=key, sign_secret=secret) as client:
         if inplace:

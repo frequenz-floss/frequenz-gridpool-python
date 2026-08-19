@@ -16,6 +16,7 @@ from frequenz.gridpool.config import (
     load_configs,
     load_configs_from_files,
 )
+from frequenz.gridpool.config.assets import AssetsConfig
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
@@ -189,9 +190,9 @@ def _write(tmp_path: Path, name: str, text: str) -> Path:
 
 def test_load_prefixed(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     """Entries under `assets.microgrids` load without a deprecation warning."""
-    configs = MicrogridConfig.load_from_file(
+    configs = AssetsConfig.load_from_file(
         _write(tmp_path, "prefixed.toml", _PREFIXED_TOML)
-    )
+    ).microgrids
 
     assert configs["1"].meta.name == "Test Grid"
     assert configs["1"].component_type_ids("pv") == [101, 102]
@@ -203,7 +204,7 @@ def test_load_legacy_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> 
     path = _write(tmp_path, "legacy.toml", _LEGACY_TOML)
 
     with caplog.at_level(logging.WARNING):
-        configs = MicrogridConfig.load_from_file(path)
+        configs = AssetsConfig.load_from_file(path).microgrids
 
     assert configs["1"].meta.name == "Test Grid"
     assert "deprecated" in caplog.text
@@ -219,14 +220,14 @@ def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="outside `assets`"):
-        MicrogridConfig.load_from_file(path)
+        AssetsConfig.load_from_file(path)
 
 
 def test_load_assets_without_microgrids(tmp_path: Path) -> None:
     """An `assets` table without microgrids yields no configs and no warning."""
     path = _write(tmp_path, "other.toml", 'assets.gridpool.7.name = "GP"\n')
 
-    assert not MicrogridConfig.load_from_file(path)
+    assert not AssetsConfig.load_from_file(path).microgrids
 
 
 async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
@@ -240,3 +241,26 @@ async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
 
     assert configs["1"].meta.name == "Renamed"
     assert configs["1"].component_type_ids("pv") == [101, 102]
+
+
+def test_assets_config_rejects_mismatched_id() -> None:
+    """An entry filed under the wrong ID is rejected wherever it is loaded."""
+    with pytest.raises(ValueError, match="Microgrid ID mismatch"):
+        AssetsConfig.Schema().load(
+            {"microgrids": {"23": {"meta": {"microgrid_id": 99}}}}
+        )
+
+
+def test_assets_config_warns_on_unknown_entities(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Entity tables this version does not know are skipped, but reported."""
+    path = _write(
+        tmp_path, "future.toml", _PREFIXED_TOML + 'assets.gridpool.7.name = "GP"\n'
+    )
+
+    with caplog.at_level(logging.WARNING):
+        config = AssetsConfig.load_from_file(path)
+
+    assert sorted(config.microgrids) == ["1"]
+    assert "gridpool" in caplog.text
