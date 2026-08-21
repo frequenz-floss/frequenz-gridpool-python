@@ -13,7 +13,7 @@ import marshmallow
 from marshmallow import Schema
 from marshmallow_dataclass import dataclass
 
-from .microgrid import MicrogridConfig
+from ._microgrid import MicrogridConfig
 
 _logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@
 """Tests for in-place patching of existing dotted-key TOML config files."""
 
 from frequenz.gridpool.cli._patch_config import patch_text
-from frequenz.gridpool.config.microgrid import (
+from frequenz.gridpool.config._microgrid import (
     ComponentTypeConfig,
     Metadata,
     MicrogridConfig,

@@ -16,7 +16,7 @@ from frequenz.gridpool.config import (
     load_configs,
     load_configs_from_files,
 )
-from frequenz.gridpool.config.assets import AssetsConfig
+from frequenz.gridpool.config._assets import AssetsConfig
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {

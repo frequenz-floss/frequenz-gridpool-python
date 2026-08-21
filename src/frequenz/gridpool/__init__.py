@@ -15,7 +15,7 @@ from .config import (
     merge_config_maps,
     merge_microgrid_configs,
 )
-from .config.assets import AssetsConfig
+from .config._assets import AssetsConfig
 
 __all__ = [
     "ComponentGraphConfig",

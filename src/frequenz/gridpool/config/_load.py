@@ -24,8 +24,8 @@ from .._graph_generator import (
     pv_inverter_ids,
     pv_meter_ids,
 )
-from .assets import AssetsConfig
-from .microgrid import (
+from ._assets import AssetsConfig
+from ._microgrid import (
     ComponentTypeConfig,
     Metadata,
     MicrogridConfig,

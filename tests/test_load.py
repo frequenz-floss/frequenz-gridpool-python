@@ -21,7 +21,7 @@ from frequenz.gridpool._graph_generator import (
     ComponentGraphGenerator,
     MicrogridComponentGraph,
 )
-from frequenz.gridpool.config.load import (
+from frequenz.gridpool.config._load import (
     _derive_component_configs,
     load_configs,
     load_configs_from_api,
