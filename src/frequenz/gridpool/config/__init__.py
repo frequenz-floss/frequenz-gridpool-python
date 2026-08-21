@@ -1,7 +1,7 @@
 # License: MIT
 # Copyright © 2025 Frequenz Energy-as-a-Service GmbH
 
-"""Microgrid configuration data model and loading."""
+"""Asset configuration data models and loading."""
 
 from frequenz.microgrid_component_graph import ComponentGraphConfig, FormulaOverrides
 
@@ -9,7 +9,6 @@ from ._assets import AssetsConfig
 from ._load import (
     load_configs,
     load_configs_from_api,
-    load_configs_from_files,
 )
 from ._microgrid import (
     BatteryConfig,
@@ -23,22 +22,31 @@ from ._microgrid import (
     merge_config_maps,
     merge_microgrid_configs,
 )
+from ._topology import (
+    DeliveryAreaConfig,
+    MarketLocationConfig,
+    RelationConfig,
+    ValidityConfig,
+)
 
 __all__ = [
+    "AssetsConfig",
     "BatteryConfig",
     "ComponentCategory",
     "ComponentGraphConfig",
     "ComponentType",
     "ComponentTypeConfig",
+    "DeliveryAreaConfig",
     "FormulaOverrides",
+    "MarketLocationConfig",
     "Metadata",
-    "AssetsConfig",
     "MicrogridConfig",
     "PVConfig",
+    "RelationConfig",
+    "ValidityConfig",
     "WindConfig",
     "load_configs",
     "load_configs_from_api",
-    "load_configs_from_files",
     "merge_config_maps",
     "merge_microgrid_configs",
 ]

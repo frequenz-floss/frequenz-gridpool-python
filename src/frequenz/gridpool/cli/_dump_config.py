@@ -9,7 +9,7 @@ Renders a `{microgrid_id: MicrogridConfig}` mapping as dotted-key TOML, e.g.:
     115.meta.name = "Demo Grid"
     115.meta.latitude = 52.52
 
-This is the inverse of `load_configs_from_files`. Value rendering (quoting,
+This is the inverse of `AssetsConfig.load_from_files`. Value rendering (quoting,
 escaping, key-quoting, list/number/datetime formatting) is delegated to
 `tomlkit`; only the flattening to dotted keys and the dropping of empty/`None`
 fields are done here, since TOML has no null and `tomlkit` rejects it.

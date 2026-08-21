@@ -204,7 +204,7 @@ async def generate_config(
     if inplace and ids is None:
         assert default_file is not None
         ids = sorted(
-            int(mid) for mid in AssetsConfig.load_from_file(default_file).microgrids
+            int(mid) for mid in AssetsConfig.load_from_files(default_file).microgrids
         )
 
     async with AssetsApiClient(url, auth_key=key, sign_secret=secret) as client:
