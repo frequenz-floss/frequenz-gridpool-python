@@ -15,7 +15,7 @@ from typing import Any
 import tomlkit
 from tomlkit import TOMLDocument
 
-from frequenz.gridpool import MicrogridConfig
+from frequenz.gridpool.config import MicrogridConfig
 
 from ._dump_config import _format_value, _iter_leaves
 

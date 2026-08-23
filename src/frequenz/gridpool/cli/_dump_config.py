@@ -20,7 +20,7 @@ from typing import Any
 import tomlkit
 from tomlkit.items import Integer, Trivia
 
-from frequenz.gridpool import MicrogridConfig
+from frequenz.gridpool.config import MicrogridConfig
 
 
 def _is_empty(value: Any) -> bool:

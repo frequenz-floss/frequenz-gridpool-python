@@ -10,13 +10,13 @@ from typing import Any
 import pytest
 from pytest_mock import MockerFixture
 
-from frequenz.gridpool import MicrogridConfig
 from frequenz.gridpool.config import (
+    AssetsConfig,
     ComponentTypeConfig,
+    MicrogridConfig,
     load_configs,
     load_configs_from_files,
 )
-from frequenz.gridpool.config._assets import AssetsConfig
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {

@@ -21,11 +21,8 @@ from frequenz.gridpool._graph_generator import (
     ComponentGraphGenerator,
     MicrogridComponentGraph,
 )
-from frequenz.gridpool.config._load import (
-    _derive_component_configs,
-    load_configs,
-    load_configs_from_api,
-)
+from frequenz.gridpool.config import load_configs, load_configs_from_api
+from frequenz.gridpool.config._load import _derive_component_configs
 
 
 def _mock_client() -> MagicMock:

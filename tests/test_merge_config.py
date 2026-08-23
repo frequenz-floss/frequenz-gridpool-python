@@ -5,7 +5,7 @@
 
 from typing import Any
 
-from frequenz.gridpool import (
+from frequenz.gridpool.config import (
     MicrogridConfig,
     merge_config_maps,
     merge_microgrid_configs,

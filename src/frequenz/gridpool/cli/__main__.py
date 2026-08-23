@@ -11,15 +11,11 @@ import asyncclick as click
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
 
-from frequenz.gridpool import (
-    AssetsConfig,
-    ComponentGraphConfig,
-    ComponentGraphGenerator,
-    load_configs,
-)
+from frequenz.gridpool import ComponentGraphConfig, ComponentGraphGenerator
 from frequenz.gridpool.cli._dump_config import dump_map
 from frequenz.gridpool.cli._patch_config import patch_file
 from frequenz.gridpool.cli._render_graph import ComponentGraphRenderer, RenderOptions
+from frequenz.gridpool.config import AssetsConfig, load_configs
 
 
 @click.group()
