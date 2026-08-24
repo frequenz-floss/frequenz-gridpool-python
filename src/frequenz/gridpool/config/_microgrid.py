@@ -186,10 +186,7 @@ class Metadata:
     """Enterprise ID of the microgrid."""
 
     gid: int | None = None
-    """Gridpool ID of the microgrid."""
-
-    delivery_area: str | None = None
-    """Delivery area of the microgrid."""
+    """Legacy ID; if set, all gridpool relations must name it."""
 
     latitude: float | None = None
     """Geographic latitude of the microgrid."""

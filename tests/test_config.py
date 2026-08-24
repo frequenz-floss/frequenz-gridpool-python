@@ -8,15 +8,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from marshmallow import ValidationError
 from pytest_mock import MockerFixture
 
-from frequenz.gridpool import MicrogridConfig
 from frequenz.gridpool.config import (
+    AssetsConfig,
     ComponentTypeConfig,
+    MicrogridConfig,
     load_configs,
-    load_configs_from_files,
 )
-from frequenz.gridpool.config.assets import AssetsConfig
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
@@ -134,7 +134,7 @@ def test_load_configs(mocker: MockerFixture) -> None:
     mock_file = mocker.mock_open(read_data=toml_data.encode("utf-8"))
     mocker.patch("pathlib.Path.open", mock_file)
     mocker.patch("pathlib.Path.is_file", mocker.Mock(return_value=True))
-    configs = load_configs_from_files(Path("mock_path.toml"))
+    configs = AssetsConfig.load_from_files(Path("mock_path.toml")).microgrids
 
     assert "1" in configs
     assert configs["1"].meta is not None
@@ -190,7 +190,7 @@ def _write(tmp_path: Path, name: str, text: str) -> Path:
 
 def test_load_prefixed(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     """Entries under `assets.microgrids` load without a deprecation warning."""
-    configs = AssetsConfig.load_from_file(
+    configs = AssetsConfig.load_from_files(
         _write(tmp_path, "prefixed.toml", _PREFIXED_TOML)
     ).microgrids
 
@@ -204,7 +204,7 @@ def test_load_legacy_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> 
     path = _write(tmp_path, "legacy.toml", _LEGACY_TOML)
 
     with caplog.at_level(logging.WARNING):
-        configs = AssetsConfig.load_from_file(path).microgrids
+        configs = AssetsConfig.load_from_files(path).microgrids
 
     assert configs["1"].meta.name == "Test Grid"
     assert "deprecated" in caplog.text
@@ -220,14 +220,14 @@ def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="outside `assets`"):
-        AssetsConfig.load_from_file(path)
+        AssetsConfig.load_from_files(path)
 
 
 def test_load_assets_without_microgrids(tmp_path: Path) -> None:
     """An `assets` table without microgrids yields no configs and no warning."""
     path = _write(tmp_path, "other.toml", 'assets.gridpool.7.name = "GP"\n')
 
-    assert not AssetsConfig.load_from_file(path).microgrids
+    assert not AssetsConfig.load_from_files(path).microgrids
 
 
 async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
@@ -243,11 +243,39 @@ async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
     assert configs["1"].component_type_ids("pv") == [101, 102]
 
 
+def test_load_from_files_layers_fields(tmp_path: Path) -> None:
+    """Later files override fields without replacing the microgrid entry."""
+    base = _write(tmp_path, "base.toml", _PREFIXED_TOML)
+    override = _write(
+        tmp_path,
+        "override.toml",
+        "assets.microgrids.1.meta.microgrid_id = 1\n"
+        'assets.microgrids.1.meta.name = "Renamed"\n',
+    )
+
+    configs = AssetsConfig.load_from_files([base, override]).microgrids
+
+    assert configs["1"].meta.name == "Renamed"
+    assert configs["1"].component_type_ids("pv") == [101, 102]
+
+
 def test_assets_config_rejects_mismatched_id() -> None:
     """An entry filed under the wrong ID is rejected wherever it is loaded."""
     with pytest.raises(ValueError, match="Microgrid ID mismatch"):
         AssetsConfig.Schema().load(
             {"microgrids": {"23": {"meta": {"microgrid_id": 99}}}}
+        )
+
+
+def test_metadata_delivery_area_removed() -> None:
+    """Delivery areas live on topology relations, not microgrid metadata."""
+    with pytest.raises(ValidationError, match="Unknown field"):
+        AssetsConfig.Schema().load(
+            {
+                "microgrids": {
+                    "23": {"meta": {"microgrid_id": 23, "delivery_area": "area"}}
+                }
+            }
         )
 
 
@@ -260,7 +288,7 @@ def test_assets_config_warns_on_unknown_entities(
     )
 
     with caplog.at_level(logging.WARNING):
-        config = AssetsConfig.load_from_file(path)
+        config = AssetsConfig.load_from_files(path)
 
     assert sorted(config.microgrids) == ["1"]
     assert "gridpool" in caplog.text

@@ -11,15 +11,11 @@ import asyncclick as click
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
 
-from frequenz.gridpool import (
-    AssetsConfig,
-    ComponentGraphConfig,
-    ComponentGraphGenerator,
-    load_configs,
-)
+from frequenz.gridpool import ComponentGraphConfig, ComponentGraphGenerator
 from frequenz.gridpool.cli._dump_config import dump_map
 from frequenz.gridpool.cli._patch_config import patch_file
 from frequenz.gridpool.cli._render_graph import ComponentGraphRenderer, RenderOptions
+from frequenz.gridpool.config import AssetsConfig, load_configs
 
 
 @click.group()
@@ -208,7 +204,7 @@ async def generate_config(
     if inplace and ids is None:
         assert default_file is not None
         ids = sorted(
-            int(mid) for mid in AssetsConfig.load_from_file(default_file).microgrids
+            int(mid) for mid in AssetsConfig.load_from_files(default_file).microgrids
         )
 
     async with AssetsApiClient(url, auth_key=key, sign_secret=secret) as client:

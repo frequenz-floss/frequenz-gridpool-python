@@ -148,6 +148,7 @@ min-similarity-lines = 40
 disable = [
   "too-few-public-methods",
   "too-many-return-statements",
+  "too-many-arguments",
   # disabled because it conflicts with isort
   "wrong-import-order",
   "ungrouped-imports",

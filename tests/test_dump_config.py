@@ -5,9 +5,13 @@
 
 import tomllib
 
-from frequenz.gridpool import MicrogridConfig
 from frequenz.gridpool.cli._dump_config import dump_map
-from frequenz.gridpool.config.microgrid import ComponentTypeConfig, Metadata, PVConfig
+from frequenz.gridpool.config import (
+    ComponentTypeConfig,
+    Metadata,
+    MicrogridConfig,
+    PVConfig,
+)
 
 
 def test_dump_map_round_trips() -> None:

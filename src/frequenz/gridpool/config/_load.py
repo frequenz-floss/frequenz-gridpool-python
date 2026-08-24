@@ -1,7 +1,7 @@
 # License: MIT
 # Copyright © 2025 Frequenz Energy-as-a-Service GmbH
 
-"""Loading and merging of microgrid configurations."""
+"""Loading and merging of asset configurations."""
 
 import logging
 from pathlib import Path
@@ -24,8 +24,8 @@ from .._graph_generator import (
     pv_inverter_ids,
     pv_meter_ids,
 )
-from .assets import AssetsConfig
-from .microgrid import (
+from ._assets import AssetsConfig
+from ._microgrid import (
     ComponentTypeConfig,
     Metadata,
     MicrogridConfig,
@@ -101,15 +101,11 @@ async def load_configs(
 
     configs: dict[str, MicrogridConfig] = {}
     if default_files is not None:
-        configs = load_configs_from_files(
-            microgrid_config_files=default_files,
-        )
+        configs = AssetsConfig.load_from_files(default_files).microgrids
 
     override_configs: dict[str, MicrogridConfig] = {}
     if override_files is not None:
-        override_configs = load_configs_from_files(
-            microgrid_config_files=override_files,
-        )
+        override_configs = AssetsConfig.load_from_files(override_files).microgrids
 
     if assets_client is not None:
         if microgrid_ids is None:
@@ -122,57 +118,6 @@ async def load_configs(
         configs = merge_config_maps(base=configs, override=assets_configs)
 
     return merge_config_maps(base=configs, override=override_configs)
-
-
-def load_configs_from_files(
-    microgrid_config_files: str | Path | list[str | Path] | None = None,
-) -> dict[str, "MicrogridConfig"]:
-    """Load multiple microgrid configurations from one or more files.
-
-    Configs for a single microgrid are expected to be in a single file.
-    Later files with the same microgrid ID will overwrite the previous configs.
-
-    Args:
-        microgrid_config_files: Path to a single microgrid config file or list of paths.
-
-    Returns:
-        Dictionary of single microgrid formula configs with microgrid IDs as keys.
-
-    Raises:
-        ValueError: If no config files are provided, or if no config files are found.
-    """
-    if microgrid_config_files is None:
-        raise ValueError(
-            "No microgrid config files provided. Please provide at least one."
-        )
-
-    config_files: list[Path] = []
-
-    if microgrid_config_files:
-        if isinstance(microgrid_config_files, str):
-            config_files = [Path(microgrid_config_files)]
-        elif isinstance(microgrid_config_files, Path):
-            config_files = [microgrid_config_files]
-        elif isinstance(microgrid_config_files, list):
-            config_files = [Path(f) for f in microgrid_config_files]
-
-    if len(config_files) == 0:
-        raise ValueError(
-            "No microgrid config files found. "
-            "Please provide at least one valid config file."
-        )
-
-    microgrid_configs: dict[str, "MicrogridConfig"] = {}
-
-    for config_path in config_files:
-        if not config_path.is_file():
-            _logger.warning("Config path %s is not a file, skipping.", config_path)
-            continue
-
-        mcfgs = AssetsConfig.load_from_file(config_path).microgrids
-        microgrid_configs.update({str(key): value for key, value in mcfgs.items()})
-
-    return microgrid_configs
 
 
 async def load_configs_from_api(
