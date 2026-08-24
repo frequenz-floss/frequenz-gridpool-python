@@ -5,6 +5,7 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
@@ -24,12 +25,11 @@ from .._graph_generator import (
     pv_inverter_ids,
     pv_meter_ids,
 )
-from ._assets import AssetsConfig
+from ._assets import AssetsConfig, _deep_merge, _merge_file_tables
 from ._microgrid import (
     ComponentTypeConfig,
     Metadata,
     MicrogridConfig,
-    merge_config_maps,
 )
 
 _logger = logging.getLogger(__name__)
@@ -86,9 +86,9 @@ async def load_configs(
             `MicrogridConfig` instance.
 
     Raises:
-        ValueError: If none of the three sources is provided, or if
-            `microgrid_ids` or `component_graph_config` is given without an
-            `assets_client`.
+        ValueError: If none of the three sources is provided, if `microgrid_ids`
+            or `component_graph_config` is given without an `assets_client`, or
+            if a file's `assets.microgrids` is not a table.
     """
     if default_files is None and assets_client is None and override_files is None:
         raise ValueError("At least one config source must be provided.")
@@ -99,25 +99,43 @@ async def load_configs(
     if component_graph_config is not None and assets_client is None:
         raise ValueError("component_graph_config requires an assets_client.")
 
-    configs: dict[str, MicrogridConfig] = {}
+    default_table: dict[str, Any] = {}
     if default_files is not None:
-        configs = AssetsConfig.load_from_files(default_files).microgrids
+        default_table = _merge_file_tables(default_files)
 
-    override_configs: dict[str, MicrogridConfig] = {}
+    override_table: dict[str, Any] = {}
     if override_files is not None:
-        override_configs = AssetsConfig.load_from_files(override_files).microgrids
+        override_table = _merge_file_tables(override_files)
 
+    merged = default_table
     if assets_client is not None:
         if microgrid_ids is None:
-            microgrid_ids = sorted({int(mid) for mid in (*configs, *override_configs)})
+            file_ids: set[str] = set()
+            for table in (default_table, override_table):
+                microgrids = table.get("microgrids", {})
+                if not isinstance(microgrids, dict):
+                    raise ValueError(
+                        f"`assets.microgrids` must be a table, got {type(microgrids)}"
+                    )
+                file_ids |= set(microgrids)
+            microgrid_ids = sorted(int(mid) for mid in file_ids)
         assets_configs = await load_configs_from_api(
             assets_client=assets_client,
             microgrid_ids=microgrid_ids,
             component_graph_config=component_graph_config,
         )
-        configs = merge_config_maps(base=configs, override=assets_configs)
+        schema = MicrogridConfig.Schema()
+        api_table: dict[str, Any] = {
+            "microgrids": {mid: schema.dump(cfg) for mid, cfg in assets_configs.items()}
+        }
+        merged = _deep_merge(merged, api_table)
 
-    return merge_config_maps(base=configs, override=override_configs)
+    merged = _deep_merge(merged, override_table)
+
+    loaded = AssetsConfig.Schema().load(merged)
+    assert isinstance(loaded, AssetsConfig)
+    loaded.check()
+    return loaded.microgrids
 
 
 async def load_configs_from_api(

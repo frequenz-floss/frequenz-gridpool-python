@@ -27,14 +27,55 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
     Nested tables are merged recursively; any other value in `override` replaces
     the one in `base`. Merging the raw tables, before they are loaded, keeps a
     field left unset in an override from resetting the base value to its default.
+
+    A `None` override is skipped so the base value survives. TOML has no null, so
+    this only matters for a dumped-object layer (e.g. the Assets API) where unset
+    fields carry `None`; on real file tables it is a no-op.
     """
     result = dict(base)
     for key, value in override.items():
+        if value is None:
+            continue
         if isinstance(value, dict) and isinstance(result.get(key), dict):
             result[key] = _deep_merge(result[key], value)
         else:
             result[key] = value
     return result
+
+
+def _merge_file_tables(
+    config_files: str | Path | list[str | Path],
+) -> dict[str, Any]:
+    """Read and deep-merge the raw `assets` tables of one or more files.
+
+    Later files win, entry by entry. Paths that are not files are skipped with a
+    warning. Merging before loading lets an override leave a field unset without
+    resetting the base value.
+
+    Args:
+        config_files: A path or list of paths to TOML config files.
+
+    Returns:
+        The merged raw `assets` table, unvalidated.
+
+    Raises:
+        ValueError: If no config files are given.
+    """
+    if isinstance(config_files, (str, Path)):
+        paths = [Path(config_files)]
+    else:
+        paths = [Path(f) for f in config_files]
+    if not paths:
+        raise ValueError("No config files provided. Please provide at least one.")
+
+    merged: dict[str, Any] = {}
+    for config_path in paths:
+        if not config_path.is_file():
+            _logger.warning("Config path %s is not a file, skipping.", config_path)
+            continue
+        # pylint: disable-next=protected-access
+        merged = _deep_merge(merged, AssetsConfig._read_assets_table(config_path))
+    return merged
 
 
 @dataclass
@@ -386,24 +427,8 @@ class AssetsConfig:
 
         Returns:
             The merged document.
-
-        Raises:
-            ValueError: If no config files are given.
         """
-        if isinstance(config_files, (str, Path)):
-            paths = [Path(config_files)]
-        else:
-            paths = [Path(f) for f in config_files]
-        if not paths:
-            raise ValueError("No config files provided. Please provide at least one.")
-
-        merged: dict[str, Any] = {}
-        for config_path in paths:
-            if not config_path.is_file():
-                _logger.warning("Config path %s is not a file, skipping.", config_path)
-                continue
-            merged = _deep_merge(merged, cls._read_assets_table(config_path))
-
+        merged = _merge_file_tables(config_files)
         loaded = cls.Schema().load(merged)
         assert isinstance(loaded, cls)
         if check:

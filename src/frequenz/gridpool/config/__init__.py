@@ -19,8 +19,6 @@ from ._microgrid import (
     MicrogridConfig,
     PVConfig,
     WindConfig,
-    merge_config_maps,
-    merge_microgrid_configs,
 )
 from ._topology import (
     DeliveryAreaConfig,
@@ -47,6 +45,4 @@ __all__ = [
     "WindConfig",
     "load_configs",
     "load_configs_from_api",
-    "merge_config_maps",
-    "merge_microgrid_configs",
 ]

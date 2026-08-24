@@ -30,6 +30,11 @@
   `AssetsConfig.load_from_files(files).microgrids`, or use the returned
   `AssetsConfig` directly to keep relations and market locations.
 
+- `merge_config_maps` and `merge_microgrid_configs` are removed. Layering is now
+  done on the raw tables before loading, inside `load_configs` and
+  `AssetsConfig.load_from_files`; pass all the layers to one of those instead of
+  merging loaded objects.
+
 - Relation validity bounds and `at` query instants must include a UTC offset.
 
 - The implementation modules `config.load` and `config.microgrid` are now

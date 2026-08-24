@@ -3,6 +3,7 @@
 
 """Tests for loading microgrid configs from the Assets API."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -125,6 +126,25 @@ async def test_load_configs_from_api_keeps_metadata_when_graph_fails() -> None:
     cfg = configs["10"]
     assert cfg.meta.microgrid_id == 10
     assert cfg.ctype == {}
+
+
+async def test_load_configs_validates_the_merged_whole(tmp_path: Path) -> None:
+    """Layers are merged before validation, so an incomplete override is legal.
+
+    The override omits `microgrid_id`, which would fail if its file were validated
+    on its own; merged onto the default it completes and the whole validates once.
+    """
+    default = tmp_path / "default.toml"
+    default.write_text(
+        "assets.microgrids.1.meta.microgrid_id = 1\n"
+        'assets.microgrids.1.meta.name = "Base"\n'
+    )
+    override = tmp_path / "override.toml"
+    override.write_text('assets.microgrids.1.meta.name = "Override"\n')
+
+    configs = await load_configs(default_files=default, override_files=override)
+
+    assert configs["1"].meta.name == "Override"
 
 
 async def test_derive_component_configs_builds_formulas_and_ids() -> None:

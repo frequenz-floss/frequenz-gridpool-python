@@ -5,7 +5,6 @@
 
 import logging
 import re
-from copy import deepcopy
 from dataclasses import field
 from datetime import datetime
 from typing import Any, ClassVar, Literal, Self, Type, cast, get_args
@@ -331,66 +330,3 @@ class MicrogridConfig:
             mgrids[mid] = mgrid
 
         return mgrids
-
-
-def merge_microgrid_configs(
-    base: MicrogridConfig,
-    override: MicrogridConfig,
-) -> MicrogridConfig:
-    """Merge two `MicrogridConfig` objects.
-
-    The *override* config takes precedence over *base*.  Nested dictionaries
-    are merged recursively.  If a field in *override* is `None` the value
-    from *base* is retained, so partial overrides never nullify existing data.
-
-    Args:
-        base: The base MicrogridConfig.
-        override: The overriding MicrogridConfig.
-
-    Returns:
-        A new MicrogridConfig representing the merged result.
-    """
-    schema = MicrogridConfig.Schema()
-    base_dict = schema.dump(base)
-    override_dict = schema.dump(override)
-
-    def _deep_merge(a: dict[Any, Any], b: dict[Any, Any]) -> dict[Any, Any]:
-        result = deepcopy(a)
-        for k, v in b.items():
-            if v is None:
-                continue
-            if isinstance(v, dict) and isinstance(result.get(k), dict):
-                result[k] = _deep_merge(result[k], v)
-            else:
-                result[k] = v
-        return result
-
-    merged = schema.load(_deep_merge(base_dict, override_dict))
-    assert isinstance(merged, MicrogridConfig)
-    return merged
-
-
-def merge_config_maps(
-    base: dict[str, MicrogridConfig],
-    override: dict[str, MicrogridConfig],
-) -> dict[str, MicrogridConfig]:
-    """Merge two dictionaries of `MicrogridConfig` objects.
-
-    For microgrid IDs present in both maps the configs are merged via
-    `merge_microgrid_configs`.  IDs that exist only in one map are
-    included unchanged.
-
-    Args:
-        base: The base dictionary of MicrogridConfig objects.
-        override: The overriding dictionary of MicrogridConfig objects.
-
-    Returns:
-        A new dictionary representing the merged result.
-    """
-    merged = dict(base)
-    for mid, cfg in override.items():
-        if mid in merged:
-            merged[mid] = merge_microgrid_configs(merged[mid], cfg)
-        else:
-            merged[mid] = cfg
-    return merged
