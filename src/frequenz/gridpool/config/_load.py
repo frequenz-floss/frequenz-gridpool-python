@@ -41,7 +41,7 @@ async def load_configs(
     override_files: str | Path | list[str | Path] | None = None,
     microgrid_ids: list[int] | None = None,
     component_graph_config: ComponentGraphConfig | None = None,
-) -> dict[str, "MicrogridConfig"]:
+) -> AssetsConfig:
     """Load configs from up to three sources and merge them in layers.
 
     Combines up to three sources, listed here from lowest to highest
@@ -81,9 +81,9 @@ async def load_configs(
             Requires an `assets_client`.
 
     Returns:
-        dict[str, MicrogridConfig]:
-            Mapping from microgrid ID (as string) to the merged
-            `MicrogridConfig` instance.
+        The merged document. Use `.microgrids` for just the microgrid map; the
+        file layers may also contribute `relations` and `market_locations`,
+        which the Assets API layer does not provide.
 
     Raises:
         ValueError: If none of the three sources is provided, if `microgrid_ids`
@@ -135,7 +135,7 @@ async def load_configs(
     loaded = AssetsConfig.Schema().load(merged)
     assert isinstance(loaded, AssetsConfig)
     loaded.check()
-    return loaded.microgrids
+    return loaded
 
 
 async def load_configs_from_api(

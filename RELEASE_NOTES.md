@@ -14,10 +14,12 @@
   configs = AssetsConfig.load_from_files(path).microgrids
   ```
 
-  `load_configs` keeps its existing interface. `load_from_files` layers files
-  field by field instead of replacing a complete microgrid entry; fields omitted
-  by a later file retain the value from the earlier layer and cannot be removed
-  by omission.
+  `load_configs` now returns the whole `AssetsConfig` rather than just its
+  microgrids, so the file layers' `relations` and `market_locations` survive the
+  merge; replace `load_configs(...)` with `load_configs(...).microgrids` where
+  only the microgrid map is needed. `load_from_files` layers files field by field
+  instead of replacing a complete microgrid entry; fields omitted by a later file
+  retain the value from the earlier layer and cannot be removed by omission.
 
 - `Metadata.delivery_area` is removed. Move its value to a relation's
   `delivery_area.code`, and set `delivery_area.code_type` when the code is not

@@ -210,24 +210,28 @@ async def generate_config(
     async with AssetsApiClient(url, auth_key=key, sign_secret=secret) as client:
         if inplace:
             # default_file is the patch target here, not a merge input.
-            configs = await load_configs(
-                assets_client=client,
-                override_files=override_file,
-                microgrid_ids=ids,
-                component_graph_config=_graph_config(
-                    prefer_meters_in_component_formulas
-                ),
-            )
+            configs = (
+                await load_configs(
+                    assets_client=client,
+                    override_files=override_file,
+                    microgrid_ids=ids,
+                    component_graph_config=_graph_config(
+                        prefer_meters_in_component_formulas
+                    ),
+                )
+            ).microgrids
         else:
-            configs = await load_configs(
-                default_files=default_file,
-                assets_client=client,
-                override_files=override_file,
-                microgrid_ids=ids,
-                component_graph_config=_graph_config(
-                    prefer_meters_in_component_formulas
-                ),
-            )
+            configs = (
+                await load_configs(
+                    default_files=default_file,
+                    assets_client=client,
+                    override_files=override_file,
+                    microgrid_ids=ids,
+                    component_graph_config=_graph_config(
+                        prefer_meters_in_component_formulas
+                    ),
+                )
+            ).microgrids
 
     if not configs:
         raise click.ClickException("No microgrids could be loaded; nothing to write.")

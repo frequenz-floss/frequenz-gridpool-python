@@ -237,7 +237,9 @@ async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
         tmp_path, "override.toml", '1.meta.microgrid_id = 1\n1.meta.name = "Renamed"\n'
     )
 
-    configs = await load_configs(default_files=base, override_files=override)
+    configs = (
+        await load_configs(default_files=base, override_files=override)
+    ).microgrids
 
     assert configs["1"].meta.name == "Renamed"
     assert configs["1"].component_type_ids("pv") == [101, 102]

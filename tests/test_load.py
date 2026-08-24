@@ -92,13 +92,15 @@ async def test_load_configs_from_api_honours_the_component_graph_config() -> Non
 
 async def test_load_configs_forwards_the_component_graph_config() -> None:
     """`load_configs` passes its component graph config down to the API layer."""
-    configs = await load_configs(
-        assets_client=_mock_client(),
-        microgrid_ids=[10],
-        component_graph_config=ComponentGraphConfig(
-            prefer_meters_in_component_formulas=True
-        ),
-    )
+    configs = (
+        await load_configs(
+            assets_client=_mock_client(),
+            microgrid_ids=[10],
+            component_graph_config=ComponentGraphConfig(
+                prefer_meters_in_component_formulas=True
+            ),
+        )
+    ).microgrids
 
     assert configs["10"].ctype["pv"].formula == {
         "AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"
@@ -142,9 +144,32 @@ async def test_load_configs_validates_the_merged_whole(tmp_path: Path) -> None:
     override = tmp_path / "override.toml"
     override.write_text('assets.microgrids.1.meta.name = "Override"\n')
 
-    configs = await load_configs(default_files=default, override_files=override)
+    document = await load_configs(default_files=default, override_files=override)
 
-    assert configs["1"].meta.name == "Override"
+    assert document.microgrids["1"].meta.name == "Override"
+
+
+async def test_load_configs_returns_the_whole_document(tmp_path: Path) -> None:
+    """The file layers' relations and market locations survive the merge.
+
+    The Assets API layer carries neither, so returning the whole `AssetsConfig`
+    is what keeps topology from a file from being dropped.
+    """
+    default = tmp_path / "default.toml"
+    default.write_text(
+        "assets.microgrids.10.meta.microgrid_id = 10\n"
+        'assets.market_locations.51171875559.id = "51171875559"\n'
+        "assets.relations.M10L51171875559.microgrid_id = 10\n"
+        'assets.relations.M10L51171875559.market_location_id = "51171875559"\n'
+    )
+
+    document = await load_configs(default_files=default, assets_client=_mock_client())
+
+    # The API layer filled the microgrid's component config.
+    assert document.microgrids["10"].ctype
+    # The file's topology survived the merge with the API layer.
+    assert "M10L51171875559" in document.relations
+    assert "51171875559" in document.market_locations
 
 
 async def test_derive_component_configs_builds_formulas_and_ids() -> None:
