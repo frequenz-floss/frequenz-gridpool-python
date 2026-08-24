@@ -119,7 +119,7 @@ async def load_configs(
                     )
                 file_ids |= set(microgrids)
             microgrid_ids = sorted(int(mid) for mid in file_ids)
-        assets_configs = await load_configs_from_api(
+        assets_configs = await _load_microgrids_from_api(
             assets_client=assets_client,
             microgrid_ids=microgrid_ids,
             component_graph_config=component_graph_config,
@@ -138,7 +138,7 @@ async def load_configs(
     return loaded
 
 
-async def load_configs_from_api(
+async def _load_microgrids_from_api(
     assets_client: AssetsApiClient,
     microgrid_ids: list[int],
     component_graph_config: ComponentGraphConfig | None = None,
@@ -147,8 +147,8 @@ async def load_configs_from_api(
 
     For each microgrid, fetches its location metadata (latitude, longitude) and
     then derives the per-type formulas and meter/inverter/component IDs from its
-    component graph. This is the canonical single-source loader so that callers
-    (e.g. the forecast pipeline) do not have to re-implement this logic.
+    component graph. Builds the Assets API layer that `load_configs` merges; for
+    an API-only load call `load_configs(assets_client=..., microgrid_ids=...)`.
 
     The two steps fail independently: a microgrid whose metadata cannot be
     fetched is skipped, while one whose component graph cannot be derived is

@@ -22,8 +22,11 @@ from frequenz.gridpool._graph_generator import (
     ComponentGraphGenerator,
     MicrogridComponentGraph,
 )
-from frequenz.gridpool.config import load_configs, load_configs_from_api
-from frequenz.gridpool.config._load import _derive_component_configs
+from frequenz.gridpool.config import load_configs
+from frequenz.gridpool.config._load import (
+    _derive_component_configs,
+    _load_microgrids_from_api,
+)
 
 
 def _mock_client() -> MagicMock:
@@ -62,9 +65,9 @@ async def _build_graph(client: MagicMock) -> MicrogridComponentGraph:
     return await ComponentGraphGenerator(client).get_component_graph(MicrogridId(10))
 
 
-async def test_load_configs_from_api_derives_formulas_and_ids() -> None:
+async def test_load_microgrids_from_api_derives_formulas_and_ids() -> None:
     """A config loaded from the API gets both formulas and component IDs."""
-    configs = await load_configs_from_api(_mock_client(), [10])
+    configs = await _load_microgrids_from_api(_mock_client(), [10])
 
     cfg = configs["10"]
     assert cfg.ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
@@ -75,9 +78,9 @@ async def test_load_configs_from_api_derives_formulas_and_ids() -> None:
     assert set(cfg.ctype) == {"grid", "consumption", "pv"}
 
 
-async def test_load_configs_from_api_honours_the_component_graph_config() -> None:
+async def test_load_microgrids_from_api_honours_the_component_graph_config() -> None:
     """A component graph config reaches the derived formulas."""
-    configs = await load_configs_from_api(
+    configs = await _load_microgrids_from_api(
         _mock_client(),
         [10],
         component_graph_config=ComponentGraphConfig(
@@ -116,14 +119,14 @@ async def test_load_configs_rejects_a_component_graph_config_without_a_client() 
         )
 
 
-async def test_load_configs_from_api_keeps_metadata_when_graph_fails() -> None:
+async def test_load_microgrids_from_api_keeps_metadata_when_graph_fails() -> None:
     """A graph-derivation failure still yields a metadata-only config."""
     client = _mock_client()
     client.list_microgrid_electrical_components = AsyncMock(
         side_effect=RuntimeError("graph unavailable")
     )
 
-    configs = await load_configs_from_api(client, [10])
+    configs = await _load_microgrids_from_api(client, [10])
 
     cfg = configs["10"]
     assert cfg.meta.microgrid_id == 10

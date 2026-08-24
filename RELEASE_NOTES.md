@@ -32,6 +32,9 @@
   `AssetsConfig.load_from_files(files).microgrids`, or use the returned
   `AssetsConfig` directly to keep relations and market locations.
 
+- `load_configs_from_api` is now private. For an API-only load call
+  `load_configs(assets_client=..., microgrid_ids=...)` and read its `.microgrids`.
+
 - `merge_config_maps` and `merge_microgrid_configs` are removed. Layering is now
   done on the raw tables before loading, inside `load_configs` and
   `AssetsConfig.load_from_files`; pass all the layers to one of those instead of
