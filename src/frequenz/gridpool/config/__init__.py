@@ -6,10 +6,7 @@
 from frequenz.microgrid_component_graph import ComponentGraphConfig, FormulaOverrides
 
 from ._assets import AssetsConfig
-from ._load import (
-    load_configs,
-    load_configs_from_api,
-)
+from ._load import load_configs
 from ._microgrid import (
     BatteryConfig,
     ComponentCategory,
@@ -19,8 +16,6 @@ from ._microgrid import (
     MicrogridConfig,
     PVConfig,
     WindConfig,
-    merge_config_maps,
-    merge_microgrid_configs,
 )
 from ._topology import (
     DeliveryAreaConfig,
@@ -46,7 +41,4 @@ __all__ = [
     "ValidityConfig",
     "WindConfig",
     "load_configs",
-    "load_configs_from_api",
-    "merge_config_maps",
-    "merge_microgrid_configs",
 ]

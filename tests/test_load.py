@@ -3,6 +3,7 @@
 
 """Tests for loading microgrid configs from the Assets API."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -21,8 +22,11 @@ from frequenz.gridpool._graph_generator import (
     ComponentGraphGenerator,
     MicrogridComponentGraph,
 )
-from frequenz.gridpool.config import load_configs, load_configs_from_api
-from frequenz.gridpool.config._load import _derive_component_configs
+from frequenz.gridpool.config import load_configs
+from frequenz.gridpool.config._load import (
+    _derive_component_configs,
+    _load_microgrids_from_api,
+)
 
 
 def _mock_client() -> MagicMock:
@@ -61,9 +65,9 @@ async def _build_graph(client: MagicMock) -> MicrogridComponentGraph:
     return await ComponentGraphGenerator(client).get_component_graph(MicrogridId(10))
 
 
-async def test_load_configs_from_api_derives_formulas_and_ids() -> None:
+async def test_load_microgrids_from_api_derives_formulas_and_ids() -> None:
     """A config loaded from the API gets both formulas and component IDs."""
-    configs = await load_configs_from_api(_mock_client(), [10])
+    configs = await _load_microgrids_from_api(_mock_client(), [10])
 
     cfg = configs["10"]
     assert cfg.ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
@@ -74,9 +78,9 @@ async def test_load_configs_from_api_derives_formulas_and_ids() -> None:
     assert set(cfg.ctype) == {"grid", "consumption", "pv"}
 
 
-async def test_load_configs_from_api_honours_the_component_graph_config() -> None:
+async def test_load_microgrids_from_api_honours_the_component_graph_config() -> None:
     """A component graph config reaches the derived formulas."""
-    configs = await load_configs_from_api(
+    configs = await _load_microgrids_from_api(
         _mock_client(),
         [10],
         component_graph_config=ComponentGraphConfig(
@@ -91,13 +95,15 @@ async def test_load_configs_from_api_honours_the_component_graph_config() -> Non
 
 async def test_load_configs_forwards_the_component_graph_config() -> None:
     """`load_configs` passes its component graph config down to the API layer."""
-    configs = await load_configs(
-        assets_client=_mock_client(),
-        microgrid_ids=[10],
-        component_graph_config=ComponentGraphConfig(
-            prefer_meters_in_component_formulas=True
-        ),
-    )
+    configs = (
+        await load_configs(
+            assets_client=_mock_client(),
+            microgrid_ids=[10],
+            component_graph_config=ComponentGraphConfig(
+                prefer_meters_in_component_formulas=True
+            ),
+        )
+    ).microgrids
 
     assert configs["10"].ctype["pv"].formula == {
         "AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"
@@ -113,18 +119,60 @@ async def test_load_configs_rejects_a_component_graph_config_without_a_client() 
         )
 
 
-async def test_load_configs_from_api_keeps_metadata_when_graph_fails() -> None:
+async def test_load_microgrids_from_api_keeps_metadata_when_graph_fails() -> None:
     """A graph-derivation failure still yields a metadata-only config."""
     client = _mock_client()
     client.list_microgrid_electrical_components = AsyncMock(
         side_effect=RuntimeError("graph unavailable")
     )
 
-    configs = await load_configs_from_api(client, [10])
+    configs = await _load_microgrids_from_api(client, [10])
 
     cfg = configs["10"]
     assert cfg.meta.microgrid_id == 10
     assert cfg.ctype == {}
+
+
+async def test_load_configs_validates_the_merged_whole(tmp_path: Path) -> None:
+    """Layers are merged before validation, so an incomplete override is legal.
+
+    The override omits `microgrid_id`, which would fail if its file were validated
+    on its own; merged onto the default it completes and the whole validates once.
+    """
+    default = tmp_path / "default.toml"
+    default.write_text(
+        "assets.microgrids.1.meta.microgrid_id = 1\n"
+        'assets.microgrids.1.meta.name = "Base"\n'
+    )
+    override = tmp_path / "override.toml"
+    override.write_text('assets.microgrids.1.meta.name = "Override"\n')
+
+    document = await load_configs(default_files=default, override_files=override)
+
+    assert document.microgrids["1"].meta.name == "Override"
+
+
+async def test_load_configs_returns_the_whole_document(tmp_path: Path) -> None:
+    """The file layers' relations and market locations survive the merge.
+
+    The Assets API layer carries neither, so returning the whole `AssetsConfig`
+    is what keeps topology from a file from being dropped.
+    """
+    default = tmp_path / "default.toml"
+    default.write_text(
+        "assets.microgrids.10.meta.microgrid_id = 10\n"
+        'assets.market_locations.51171875559.id = "51171875559"\n'
+        "assets.relations.M10L51171875559.microgrid_id = 10\n"
+        'assets.relations.M10L51171875559.market_location_id = "51171875559"\n'
+    )
+
+    document = await load_configs(default_files=default, assets_client=_mock_client())
+
+    # The API layer filled the microgrid's component config.
+    assert document.microgrids["10"].ctype
+    # The file's topology survived the merge with the API layer.
+    assert "M10L51171875559" in document.relations
+    assert "51171875559" in document.market_locations
 
 
 async def test_derive_component_configs_builds_formulas_and_ids() -> None:
