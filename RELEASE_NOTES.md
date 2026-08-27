@@ -53,6 +53,10 @@
   configs[1]  # was configs["1"]
   ```
 
+- The `AC_ACTIVE_POWER` deprecation warning is dropped. Use `AC_POWER_ACTIVE`
+  as the formula metric key; the old name is no longer flagged on load.
+
+
 ## New Features
 
 - `AssetsConfig` gives the `assets` namespace a type, so the entities still to

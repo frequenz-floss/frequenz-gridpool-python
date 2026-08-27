@@ -3,7 +3,6 @@
 
 """Data model for microgrid configurations."""
 
-import logging
 import re
 from dataclasses import field
 from datetime import datetime
@@ -11,9 +10,6 @@ from typing import Any, ClassVar, Literal, Self, Type, cast, get_args
 
 from marshmallow import Schema
 from marshmallow_dataclass import dataclass
-
-_logger = logging.getLogger(__name__)
-
 
 ComponentType = Literal["grid", "pv", "battery", "consumption", "chp", "ev"]
 """Valid component types."""
@@ -41,11 +37,6 @@ class ComponentTypeConfig:
     def __post_init__(self) -> None:
         """Set the default formula if none is provided."""
         self.formula = self.formula or {}
-        if "AC_ACTIVE_POWER" in self.formula:
-            _logger.warning(
-                "ComponentTypeConfig: 'AC_ACTIVE_POWER' formula is deprecated, "
-                "please use 'AC_POWER_ACTIVE' instead."
-            )
 
     def cids(self, metric: str = "") -> list[int]:
         """Get component IDs for this component.
