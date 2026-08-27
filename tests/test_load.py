@@ -129,7 +129,7 @@ async def test_load_microgrids_from_api_keeps_metadata_when_graph_fails() -> Non
     configs = await _load_microgrids_from_api(client, [10])
 
     cfg = configs[10]
-    assert cfg.meta.microgrid_id == 10
+    assert cfg.microgrid_id == 10
     assert cfg.ctype == {}
 
 
@@ -141,15 +141,14 @@ async def test_load_configs_validates_the_merged_whole(tmp_path: Path) -> None:
     """
     default = tmp_path / "default.toml"
     default.write_text(
-        "assets.microgrids.1.meta.microgrid_id = 1\n"
-        'assets.microgrids.1.meta.name = "Base"\n'
+        'assets.microgrids.1.microgrid_id = 1\nassets.microgrids.1.name = "Base"\n'
     )
     override = tmp_path / "override.toml"
-    override.write_text('assets.microgrids.1.meta.name = "Override"\n')
+    override.write_text('assets.microgrids.1.name = "Override"\n')
 
     document = await load_configs(default_files=default, override_files=override)
 
-    assert document.microgrids[1].meta.name == "Override"
+    assert document.microgrids[1].name == "Override"
 
 
 async def test_load_configs_returns_the_whole_document(tmp_path: Path) -> None:
@@ -160,8 +159,8 @@ async def test_load_configs_returns_the_whole_document(tmp_path: Path) -> None:
     """
     default = tmp_path / "default.toml"
     default.write_text(
-        "assets.microgrids.10.meta.microgrid_id = 10\n"
-        'assets.microgrids.10.meta.name = "File name"\n'
+        "assets.microgrids.10.microgrid_id = 10\n"
+        'assets.microgrids.10.name = "File name"\n'
         'assets.market_locations.51171875559.id = "51171875559"\n'
         "assets.relations.M10L51171875559.microgrid_id = 10\n"
         'assets.relations.M10L51171875559.market_location_id = "51171875559"\n'
@@ -171,7 +170,7 @@ async def test_load_configs_returns_the_whole_document(tmp_path: Path) -> None:
 
     # The API layer filled the microgrid's component config.
     assert document.microgrids[10].ctype
-    assert document.microgrids[10].meta.name == "File name"
+    assert document.microgrids[10].name == "File name"
     # The file's topology survived the merge with the API layer.
     assert "M10L51171875559" in document.relations
     assert "51171875559" in document.market_locations

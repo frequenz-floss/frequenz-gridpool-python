@@ -162,9 +162,9 @@ class BatteryConfig:
 
 
 # pylint: disable=too-many-instance-attributes
-@dataclass(frozen=True)
-class Metadata:
-    """Metadata for a microgrid."""
+@dataclass
+class MicrogridConfig:
+    """Configuration of a microgrid."""
 
     microgrid_id: int
     """ID of the microgrid."""
@@ -192,14 +192,6 @@ class Metadata:
 
     end_time: datetime | None = None
     """End time of the microgrid operation."""
-
-
-@dataclass
-class MicrogridConfig:
-    """Configuration of a microgrid."""
-
-    meta: Metadata
-    """Metadata of the microgrid."""
 
     pv: dict[str, PVConfig] | None = None
     """Configuration of the PV system."""
@@ -309,13 +301,9 @@ class MicrogridConfig:
                 raise TypeError("Table reader: Each microgrid entry must be a dict")
 
             mgrid = cls.Schema().load(entry)
-            if mgrid.meta is None or mgrid.meta.microgrid_id is None:
+            if int(mgrid.microgrid_id) != int(mid):
                 raise ValueError(
-                    "Table reader: Each microgrid entry must have a meta.microgrid_id"
-                )
-            if int(mgrid.meta.microgrid_id) != int(mid):
-                raise ValueError(
-                    f"Table reader: Microgrid ID mismatch: key {mid} != {mgrid.meta.microgrid_id}"
+                    f"Table reader: Microgrid ID mismatch: key {mid} != {mgrid.microgrid_id}"
                 )
 
             mgrids[int(mid)] = mgrid

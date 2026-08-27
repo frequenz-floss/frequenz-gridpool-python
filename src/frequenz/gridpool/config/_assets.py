@@ -115,9 +115,9 @@ class AssetsConfig:
             ValueError: If a key is not the ID of the entry it holds.
         """
         for mid, cfg in self.microgrids.items():
-            if int(cfg.meta.microgrid_id) != mid:
+            if int(cfg.microgrid_id) != mid:
                 raise ValueError(
-                    f"Microgrid ID mismatch: key {mid} != {cfg.meta.microgrid_id}"
+                    f"Microgrid ID mismatch: key {mid} != {cfg.microgrid_id}"
                 )
 
     def check(self) -> None:
@@ -198,15 +198,15 @@ class AssetsConfig:
             )
 
         for microgrid in self.microgrids.values():
-            legacy_gid = microgrid.meta.gid
+            legacy_gid = microgrid.gid
             if legacy_gid is None:
                 continue
-            relation_gids = gridpools_by_microgrid.get(microgrid.meta.microgrid_id)
+            relation_gids = gridpools_by_microgrid.get(microgrid.microgrid_id)
             if relation_gids and relation_gids != {legacy_gid}:
                 raise ValueError(
-                    f"Microgrid {microgrid.meta.microgrid_id}: legacy meta.gid "
+                    f"Microgrid {microgrid.microgrid_id}: legacy gid "
                     f"{legacy_gid} disagrees with relation gridpools "
-                    f"{sorted(relation_gids)}; remove meta.gid when several apply"
+                    f"{sorted(relation_gids)}; remove gid when several apply"
                 )
 
     def find_relations(

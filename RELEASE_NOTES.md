@@ -21,9 +21,20 @@
   instead of replacing a complete microgrid entry; fields omitted by a later file
   retain the value from the earlier layer and cannot be removed by omission.
 
-- `Metadata.delivery_area` is removed. Move its value to a relation's
+- `Metadata` is removed; its fields (`microgrid_id`, `name`, `gid`, coordinates,
+  times) now sit directly on `MicrogridConfig`:
+
+  ```python
+  MicrogridConfig(microgrid_id=1, name="Grid")  # was meta=Metadata(...)
+  ```
+
+  In TOML they move up one level, `assets.microgrids.1.name` rather than
+  `assets.microgrids.1.meta.name`. A file still nesting a microgrid's fields
+  under `meta` loads, lifted with a deprecation warning.
+
+- A microgrid's `delivery_area` is removed. Move its value to a relation's
   `delivery_area.code`, and set `delivery_area.code_type` when the code is not
-  EIC. When relations are present, the legacy `Metadata.gid` must be their sole
+  EIC. When relations are present, the legacy `gid` must be their sole
   gridpool ID; remove it for a microgrid that participates in several gridpools.
 
 - `load_configs_from_files` is removed. Use `AssetsConfig.load_from_files`,
@@ -93,7 +104,7 @@
   `find_microgrids`, each filtered by the other sides and an instant.
 
   Time-varying enterprise ownership is outside this change;
-  `Metadata.enterprise_id` remains as a scalar field.
+  `MicrogridConfig.enterprise_id` remains as a scalar field.
 
 ## Bug Fixes
 
