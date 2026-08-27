@@ -20,7 +20,9 @@ from frequenz.gridpool.config import (
 
 VALID_CONFIG: dict[str, dict[str, Any]] = {
     "1": {
-        "meta": {"name": "Test Grid", "gid": 1, "microgrid_id": 1},
+        "name": "Test Grid",
+        "gid": 1,
+        "microgrid_id": 1,
         "ctype": {
             "pv": {"meter": [101, 102], "formula": {"AC_POWER_ACTIVE": "#12+#23"}},
             "battery": {
@@ -68,8 +70,7 @@ def test_component_type_config_cids() -> None:
 
 def test_microgrid_config_init(valid_microgrid_config: MicrogridConfig) -> None:
     """Test initialisation of MicrogridConfig with valid configuration data."""
-    assert valid_microgrid_config.meta is not None
-    assert valid_microgrid_config.meta.name == "Test Grid"
+    assert valid_microgrid_config.name == "Test Grid"
     pv_config = valid_microgrid_config.pv
     assert pv_config is not None
     pv_system = pv_config.get("PV1")
@@ -119,9 +120,9 @@ def test_microgrid_config_formula(valid_microgrid_config: MicrogridConfig) -> No
 def test_load_configs(mocker: MockerFixture) -> None:
     """Test loading configurations for multiple microgrids from mock TOML files."""
     toml_data = """
-    1.meta.microgrid_id = 1
-    1.meta.name = "Test Grid"
-    1.meta.gid = 1
+    1.microgrid_id = 1
+    1.name = "Test Grid"
+    1.gid = 1
     1.ctype.pv.meter = [101, 102]
     1.ctype.battery.inverter = [201, 202, 203]
     1.ctype.battery.component = [301, 302, 303, 304, 305, 306]
@@ -137,8 +138,7 @@ def test_load_configs(mocker: MockerFixture) -> None:
     configs = AssetsConfig.load_from_files(Path("mock_path.toml")).microgrids
 
     assert 1 in configs
-    assert configs[1].meta is not None
-    assert configs[1].meta.name == "Test Grid"
+    assert configs[1].name == "Test Grid"
 
     pv_config = configs[1].pv
     assert pv_config is not None
@@ -169,14 +169,14 @@ def _assert_optional_field(value: float | None, expected: float) -> None:
 
 
 _PREFIXED_TOML = """
-assets.microgrids.1.meta.microgrid_id = 1
-assets.microgrids.1.meta.name = "Test Grid"
+assets.microgrids.1.microgrid_id = 1
+assets.microgrids.1.name = "Test Grid"
 assets.microgrids.1.ctype.pv.meter = [101, 102]
 """
 
 _LEGACY_TOML = """
-1.meta.microgrid_id = 1
-1.meta.name = "Test Grid"
+1.microgrid_id = 1
+1.name = "Test Grid"
 1.ctype.pv.meter = [101, 102]
 """
 
@@ -194,7 +194,7 @@ def test_load_prefixed(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None
         _write(tmp_path, "prefixed.toml", _PREFIXED_TOML)
     ).microgrids
 
-    assert configs[1].meta.name == "Test Grid"
+    assert configs[1].name == "Test Grid"
     assert configs[1].component_type_ids("pv") == [101, 102]
     assert "deprecated" not in caplog.text
 
@@ -206,9 +206,28 @@ def test_load_legacy_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> 
     with caplog.at_level(logging.WARNING):
         configs = AssetsConfig.load_from_files(path).microgrids
 
-    assert configs[1].meta.name == "Test Grid"
+    assert configs[1].name == "Test Grid"
     assert "deprecated" in caplog.text
     assert str(path) in caplog.text
+
+
+def test_load_meta_layout_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A microgrid nesting its fields under `meta` still loads, but warns."""
+    path = _write(
+        tmp_path,
+        "meta.toml",
+        "assets.microgrids.1.meta.microgrid_id = 1\n"
+        'assets.microgrids.1.meta.name = "Test Grid"\n',
+    )
+
+    with caplog.at_level(logging.WARNING):
+        configs = AssetsConfig.load_from_files(path).microgrids
+
+    assert configs[1].name == "Test Grid"
+    assert "meta" in caplog.text
+    assert "deprecated" in caplog.text
 
 
 def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
@@ -216,7 +235,7 @@ def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
     path = _write(
         tmp_path,
         "mixed.toml",
-        _PREFIXED_TOML + '2.meta.microgrid_id = 2\n2.meta.name = "Other Grid"\n',
+        _PREFIXED_TOML + '2.microgrid_id = 2\n2.name = "Other Grid"\n',
     )
 
     with pytest.raises(ValueError, match="outside `assets`"):
@@ -234,14 +253,14 @@ async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
     """Layers of either layout merge as usual, since layout is resolved on load."""
     base = _write(tmp_path, "base.toml", _PREFIXED_TOML)
     override = _write(
-        tmp_path, "override.toml", '1.meta.microgrid_id = 1\n1.meta.name = "Renamed"\n'
+        tmp_path, "override.toml", '1.microgrid_id = 1\n1.name = "Renamed"\n'
     )
 
     configs = (
         await load_configs(default_files=base, override_files=override)
     ).microgrids
 
-    assert configs[1].meta.name == "Renamed"
+    assert configs[1].name == "Renamed"
     assert configs[1].component_type_ids("pv") == [101, 102]
 
 
@@ -251,33 +270,27 @@ def test_load_from_files_layers_fields(tmp_path: Path) -> None:
     override = _write(
         tmp_path,
         "override.toml",
-        "assets.microgrids.1.meta.microgrid_id = 1\n"
-        'assets.microgrids.1.meta.name = "Renamed"\n',
+        "assets.microgrids.1.microgrid_id = 1\n"
+        'assets.microgrids.1.name = "Renamed"\n',
     )
 
     configs = AssetsConfig.load_from_files([base, override]).microgrids
 
-    assert configs[1].meta.name == "Renamed"
+    assert configs[1].name == "Renamed"
     assert configs[1].component_type_ids("pv") == [101, 102]
 
 
 def test_assets_config_rejects_mismatched_id() -> None:
     """An entry filed under the wrong ID is rejected wherever it is loaded."""
     with pytest.raises(ValueError, match="Microgrid ID mismatch"):
-        AssetsConfig.Schema().load(
-            {"microgrids": {"23": {"meta": {"microgrid_id": 99}}}}
-        )
+        AssetsConfig.Schema().load({"microgrids": {"23": {"microgrid_id": 99}}})
 
 
-def test_metadata_delivery_area_removed() -> None:
-    """Delivery areas live on topology relations, not microgrid metadata."""
+def test_microgrid_delivery_area_removed() -> None:
+    """Delivery areas live on topology relations, not on a microgrid."""
     with pytest.raises(ValidationError, match="Unknown field"):
         AssetsConfig.Schema().load(
-            {
-                "microgrids": {
-                    "23": {"meta": {"microgrid_id": 23, "delivery_area": "area"}}
-                }
-            }
+            {"microgrids": {"23": {"microgrid_id": 23, "delivery_area": "area"}}}
         )
 
 

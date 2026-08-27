@@ -28,7 +28,6 @@ from .._graph_generator import (
 from ._assets import AssetsConfig, _deep_merge, _merge_file_tables
 from ._microgrid import (
     ComponentTypeConfig,
-    Metadata,
     MicrogridConfig,
 )
 
@@ -219,11 +218,9 @@ async def _build_config_from_metadata(
     mgrid = await assets_client.get_microgrid(MicrogridId(microgrid_id))
     location = mgrid.location if mgrid.location else None
     return MicrogridConfig(
-        meta=Metadata(
-            microgrid_id=microgrid_id,
-            latitude=location.latitude if location else None,
-            longitude=location.longitude if location else None,
-        )
+        microgrid_id=microgrid_id,
+        latitude=location.latitude if location else None,
+        longitude=location.longitude if location else None,
     )
 
 

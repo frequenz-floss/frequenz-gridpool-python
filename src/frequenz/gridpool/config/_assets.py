@@ -16,6 +16,7 @@ from marshmallow import Schema
 from marshmallow_dataclass import dataclass
 
 from ._microgrid import MicrogridConfig
+from ._migrations import _CURRENT_VERSION, migrate
 from ._topology import DeliveryAreaConfig, MarketLocationConfig, RelationConfig
 
 _logger = logging.getLogger(__name__)
@@ -82,6 +83,9 @@ def _merge_file_tables(
 class AssetsConfig:
     """Entities described by a config document, keyed by their ID."""
 
+    version: int = _CURRENT_VERSION
+    """Format version of the `assets` namespace, stamped by the migration."""
+
     microgrids: dict[int, MicrogridConfig] = field(default_factory=dict)
     """Microgrids, keyed by microgrid ID."""
 
@@ -115,9 +119,9 @@ class AssetsConfig:
             ValueError: If a key is not the ID of the entry it holds.
         """
         for mid, cfg in self.microgrids.items():
-            if int(cfg.meta.microgrid_id) != mid:
+            if int(cfg.microgrid_id) != mid:
                 raise ValueError(
-                    f"Microgrid ID mismatch: key {mid} != {cfg.meta.microgrid_id}"
+                    f"Microgrid ID mismatch: key {mid} != {cfg.microgrid_id}"
                 )
 
     def check(self) -> None:
@@ -198,15 +202,15 @@ class AssetsConfig:
             )
 
         for microgrid in self.microgrids.values():
-            legacy_gid = microgrid.meta.gid
+            legacy_gid = microgrid.gid
             if legacy_gid is None:
                 continue
-            relation_gids = gridpools_by_microgrid.get(microgrid.meta.microgrid_id)
+            relation_gids = gridpools_by_microgrid.get(microgrid.microgrid_id)
             if relation_gids and relation_gids != {legacy_gid}:
                 raise ValueError(
-                    f"Microgrid {microgrid.meta.microgrid_id}: legacy meta.gid "
+                    f"Microgrid {microgrid.microgrid_id}: legacy gid "
                     f"{legacy_gid} disagrees with relation gridpools "
-                    f"{sorted(relation_gids)}; remove meta.gid when several apply"
+                    f"{sorted(relation_gids)}; remove gid when several apply"
                 )
 
     def find_relations(
@@ -360,9 +364,8 @@ class AssetsConfig:
     def _read_assets_table(cls, config_path: Path) -> dict[str, Any]:
         """Read the raw `assets` table from a TOML file.
 
-        Entries live under `assets`. A document without an `assets` table is
-        read in the deprecated layout, where the microgrid entries sit at the
-        top level.
+        The document is migrated to the current format before its `assets`
+        table is returned for merging.
 
         Args:
             config_path: The path to the TOML configuration file.
@@ -372,31 +375,16 @@ class AssetsConfig:
 
         Raises:
             TypeError: If `assets` is not a table.
-            ValueError: If both layouts are present, which means a half-migrated
-                file rather than a merge.
         """
         with config_path.open("rb") as f:
             data: dict[str, Any] = tomllib.load(f)
 
-        if "assets" not in data:
-            _logger.warning(
-                "%s: top-level microgrid IDs are deprecated, "
-                "nest the entries under `assets.microgrids` instead.",
-                config_path,
-            )
-            data = {"assets": {"microgrids": data}}
+        data = migrate(data, config_path)
 
         assets = data["assets"]
         if not isinstance(assets, dict):
             raise TypeError(
                 f"{config_path}: `assets` must be a table, got {type(assets)}"
-            )
-
-        if unprefixed := sorted(k for k in data if k != "assets"):
-            raise ValueError(
-                f"{config_path}: keys {unprefixed} sit outside `assets` while the "
-                "file already has an `assets` table; move them under "
-                "`assets.microgrids`."
             )
 
         cls._warn_unknown_entities(assets, config_path)

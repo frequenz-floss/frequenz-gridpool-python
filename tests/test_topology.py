@@ -338,7 +338,7 @@ def test_microgrid_in_two_gridpools_by_participation() -> None:
 
 def test_legacy_gridpool_id_must_match_relations() -> None:
     """The legacy scalar gridpool ID must describe all current relations."""
-    microgrids = {"241": {"meta": {"microgrid_id": 241, "gid": 80}}}
+    microgrids = {"241": {"microgrid_id": 241, "gid": 80}}
 
     config = _load(
         microgrids=microgrids,
@@ -346,10 +346,10 @@ def test_legacy_gridpool_id_must_match_relations() -> None:
             {"gridpool_id": 80, "microgrid_id": 241, "delivery_area": {"code": _AREA_A}}
         ),
     )
-    assert config.microgrids[241].meta.gid == 80
+    assert config.microgrids[241].gid == 80
 
     _load(
-        microgrids={"241": {"meta": {"microgrid_id": 241}}},
+        microgrids={"241": {"microgrid_id": 241}},
         **_relations(
             {
                 "gridpool_id": 80,
@@ -364,7 +364,7 @@ def test_legacy_gridpool_id_must_match_relations() -> None:
         ),
     )
 
-    with pytest.raises(ValueError, match="legacy meta.gid"):
+    with pytest.raises(ValueError, match="legacy gid"):
         _load(
             microgrids=microgrids,
             **_relations(
@@ -376,7 +376,7 @@ def test_legacy_gridpool_id_must_match_relations() -> None:
             ),
         )
 
-    with pytest.raises(ValueError, match="remove meta.gid"):
+    with pytest.raises(ValueError, match="remove gid"):
         _load(
             microgrids=microgrids,
             **_relations(
