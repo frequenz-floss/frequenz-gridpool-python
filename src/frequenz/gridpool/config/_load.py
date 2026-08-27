@@ -219,6 +219,9 @@ async def _build_config_from_metadata(
     location = mgrid.location if mgrid.location else None
     return MicrogridConfig(
         microgrid_id=microgrid_id,
+        # The Assets API always sets an EnterpriseId; an unassigned enterprise
+        # comes back as the proto default 0, which we treat as absent.
+        enterprise_id=int(mgrid.enterprise_id) or None,
         latitude=location.latitude if location else None,
         longitude=location.longitude if location else None,
     )
