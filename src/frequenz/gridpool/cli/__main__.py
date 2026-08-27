@@ -144,6 +144,37 @@ async def validate(config_files: tuple[Path, ...]) -> None:
     )
 
 
+@cli.command("find-enterprise")
+@click.argument("gridpool_id", type=int)
+@click.argument(
+    "config_files",
+    nargs=-1,
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+async def find_enterprise(gridpool_id: int, config_files: tuple[Path, ...]) -> None:
+    """Print the enterprise ID owning GRIDPOOL_ID, read from the config files.
+
+    The files are read as one merged stack. The owner is taken from the
+    `gridpools` entry without validating the full document. Exits non-zero if
+    the gridpool is not configured.
+    """
+    try:
+        # The declared `gridpools` entry is the source of truth for ownership,
+        # so read it even from a document whole-document validation would reject.
+        config = AssetsConfig.load_from_files(list(config_files), check=False)
+        enterprise_id = config.find_enterprise(gridpool_id)
+    except _LOAD_ERRORS as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if enterprise_id is None:
+        raise click.ClickException(
+            f"Could not determine the enterprise for gridpool {gridpool_id} "
+            "from the given config(s)."
+        )
+    click.echo(enterprise_id)
+
+
 @cli.command("render-graph")
 @click.argument("microgrid_id", type=int)
 @click.option(

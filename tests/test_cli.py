@@ -191,6 +191,68 @@ async def test_inplace_refuses_to_write_an_inconsistent_patch() -> None:
         assert Path("cfg.toml").read_text(encoding="utf-8") == original
 
 
+async def test_find_enterprise_prints_the_owner() -> None:
+    """The command reads a gridpool's owning enterprise from the config."""
+    with CliRunner().isolated_filesystem():
+        Path("gp.toml").write_text(
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "80", "gp.toml"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "42"
+
+
+async def test_find_enterprise_requires_a_gridpool_entry() -> None:
+    """Related microgrids are not used as a fallback."""
+    with CliRunner().isolated_filesystem():
+        Path("cfg.toml").write_text(
+            "assets.microgrids.10.microgrid_id = 10\n"
+            "assets.microgrids.10.enterprise_id = 7\n"
+            "assets.relations.G80M10.gridpool_id = 80\n"
+            "assets.relations.G80M10.microgrid_id = 10\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "80", "cfg.toml"])
+
+    assert result.exit_code != 0
+    assert "80" in result.output
+
+
+async def test_find_enterprise_skips_consistency_validation() -> None:
+    """Deployment lookup reads the gridpool even if other entries conflict."""
+    with CliRunner().isolated_filesystem():
+        Path("cfg.toml").write_text(
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n"
+            "assets.microgrids.10.microgrid_id = 10\n"
+            "assets.microgrids.10.enterprise_id = 7\n"
+            "assets.relations.G80M10.gridpool_id = 80\n"
+            "assets.relations.G80M10.microgrid_id = 10\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "80", "cfg.toml"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "42"
+
+
+async def test_find_enterprise_fails_for_an_unknown_gridpool() -> None:
+    """A gridpool with no entry exits non-zero with a readable message."""
+    with CliRunner().isolated_filesystem():
+        Path("gp.toml").write_text(
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "99", "gp.toml"])
+
+    assert result.exit_code != 0
+    assert "99" in result.output
+
+
 async def test_validate_accepts_a_valid_stack() -> None:
     """A well-formed document validates with a zero exit code."""
     with CliRunner().isolated_filesystem():
