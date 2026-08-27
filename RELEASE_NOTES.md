@@ -79,6 +79,11 @@
   File loaders ignore unknown entity tables with a warning, so a reader keeps
   working against files that already carry newer entities.
 
+  The `assets` table may carry a `version`; on load a document is run through a
+  migration pipeline that brings older layouts up to the current format, so
+  legacy files keep working. The version tracks the assets format alone, not
+  the whole document.
+
 - Market topology is described under `assets.relations`, based on the Assets
   API `MarketTopologyRelation`: each record links at least two of a gridpool, a
   microgrid and a market location, filed under a

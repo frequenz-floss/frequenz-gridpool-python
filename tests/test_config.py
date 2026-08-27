@@ -211,6 +211,25 @@ def test_load_legacy_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> 
     assert str(path) in caplog.text
 
 
+def test_load_meta_layout_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A microgrid nesting its fields under `meta` still loads, but warns."""
+    path = _write(
+        tmp_path,
+        "meta.toml",
+        "assets.microgrids.1.meta.microgrid_id = 1\n"
+        'assets.microgrids.1.meta.name = "Test Grid"\n',
+    )
+
+    with caplog.at_level(logging.WARNING):
+        configs = AssetsConfig.load_from_files(path).microgrids
+
+    assert configs[1].name == "Test Grid"
+    assert "meta" in caplog.text
+    assert "deprecated" in caplog.text
+
+
 def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
     """A half-migrated file with both layouts is an error, not a merge."""
     path = _write(
