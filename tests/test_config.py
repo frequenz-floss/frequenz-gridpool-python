@@ -121,17 +121,17 @@ def test_microgrid_config_formula(valid_microgrid_config: MicrogridConfig) -> No
 def test_load_configs(mocker: MockerFixture) -> None:
     """Test loading configurations for multiple microgrids from mock TOML files."""
     toml_data = """
-    1.microgrid_id = 1
-    1.name = "Test Grid"
-    1.gid = 1
-    1.ctype.pv.meter = [101, 102]
-    1.ctype.battery.inverter = [201, 202, 203]
-    1.ctype.battery.component = [301, 302, 303, 304, 305, 306]
-    1.pv.PV1.peak_power = 5000
-    1.pv.PV1.rated_power = 4500
-    1.pv.PV2.peak_power = 8000
-    1.pv.PV2.rated_power = 7000
-    1.battery.BAT1.capacity = 10000
+    assets.microgrids.1.microgrid_id = 1
+    assets.microgrids.1.name = "Test Grid"
+    assets.microgrids.1.gid = 1
+    assets.microgrids.1.ctype.pv.meter = [101, 102]
+    assets.microgrids.1.ctype.battery.inverter = [201, 202, 203]
+    assets.microgrids.1.ctype.battery.component = [301, 302, 303, 304, 305, 306]
+    assets.microgrids.1.pv.PV1.peak_power = 5000
+    assets.microgrids.1.pv.PV1.rated_power = 4500
+    assets.microgrids.1.pv.PV2.peak_power = 8000
+    assets.microgrids.1.pv.PV2.rated_power = 7000
+    assets.microgrids.1.battery.BAT1.capacity = 10000
     """
     mock_file = mocker.mock_open(read_data=toml_data.encode("utf-8"))
     mocker.patch("pathlib.Path.open", mock_file)
@@ -175,12 +175,6 @@ assets.microgrids.1.name = "Test Grid"
 assets.microgrids.1.ctype.pv.meter = [101, 102]
 """
 
-_LEGACY_TOML = """
-1.microgrid_id = 1
-1.name = "Test Grid"
-1.ctype.pv.meter = [101, 102]
-"""
-
 
 def _write(tmp_path: Path, name: str, text: str) -> Path:
     """Write `text` to `name` under `tmp_path` and return the path."""
@@ -200,47 +194,18 @@ def test_load_prefixed(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None
     assert "deprecated" not in caplog.text
 
 
-def test_load_legacy_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-    """Top-level entries still load, but warn and name the file."""
-    path = _write(tmp_path, "legacy.toml", _LEGACY_TOML)
-
-    with caplog.at_level(logging.WARNING):
-        configs = AssetsConfig.load_from_files(path).microgrids
-
-    assert configs[1].name == "Test Grid"
-    assert "deprecated" in caplog.text
-    assert str(path) in caplog.text
-
-
-def test_load_meta_layout_warns(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A microgrid nesting its fields under `meta` still loads, but warns."""
-    path = _write(
-        tmp_path,
-        "meta.toml",
-        "assets.microgrids.1.meta.microgrid_id = 1\n"
-        'assets.microgrids.1.meta.name = "Test Grid"\n',
-    )
-
-    with caplog.at_level(logging.WARNING):
-        configs = AssetsConfig.load_from_files(path).microgrids
-
-    assert configs[1].name == "Test Grid"
-    assert "meta" in caplog.text
-    assert "deprecated" in caplog.text
-
-
-def test_load_mixed_layouts_rejected(tmp_path: Path) -> None:
-    """A half-migrated file with both layouts is an error, not a merge."""
+def test_load_ignores_keys_outside_assets(tmp_path: Path) -> None:
+    """Top-level keys next to `assets` are ignored; only `assets` is read."""
     path = _write(
         tmp_path,
         "mixed.toml",
         _PREFIXED_TOML + '2.microgrid_id = 2\n2.name = "Other Grid"\n',
     )
 
-    with pytest.raises(ValueError, match="outside `assets`"):
-        AssetsConfig.load_from_files(path)
+    configs = AssetsConfig.load_from_files(path).microgrids
+
+    assert set(configs) == {1}
+    assert configs[1].name == "Test Grid"
 
 
 def test_load_assets_without_microgrids(tmp_path: Path) -> None:
@@ -250,18 +215,16 @@ def test_load_assets_without_microgrids(tmp_path: Path) -> None:
     assert not AssetsConfig.load_from_files(path).microgrids
 
 
-async def test_merge_prefixed_base_with_legacy_override(tmp_path: Path) -> None:
-    """Layers of either layout merge as usual, since layout is resolved on load."""
+async def test_merge_ignores_a_non_assets_override(tmp_path: Path) -> None:
+    """An override file with no `assets` table contributes nothing to the merge."""
     base = _write(tmp_path, "base.toml", _PREFIXED_TOML)
-    override = _write(
-        tmp_path, "override.toml", '1.microgrid_id = 1\n1.name = "Renamed"\n'
-    )
+    override = _write(tmp_path, "override.toml", '[app]\nname = "consumer"\n')
 
     configs = (
         await load_configs(default_files=base, override_files=override)
     ).microgrids
 
-    assert configs[1].name == "Renamed"
+    assert configs[1].name == "Test Grid"
     assert configs[1].component_type_ids("pv") == [101, 102]
 
 

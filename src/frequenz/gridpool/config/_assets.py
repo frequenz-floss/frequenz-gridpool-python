@@ -443,23 +443,28 @@ class AssetsConfig:
         """Read the raw `assets` table from a TOML file.
 
         The document is migrated to the current format before its `assets`
-        table is returned for merging.
+        table is returned for merging. A file with no `assets` table contributes
+        nothing to the merge, so consumers can pass a mixed list of files and
+        gridpool reads only the `assets`-bearing ones.
 
         Args:
             config_path: The path to the TOML configuration file.
 
         Returns:
-            The raw `assets` table, unvalidated, for merging before it is loaded.
+            The raw `assets` table, unvalidated, for merging before it is loaded,
+            or an empty table if the file has none.
 
         Raises:
-            TypeError: If `assets` is not a table.
+            TypeError: If `assets` is present but not a table.
         """
         with config_path.open("rb") as f:
             data: dict[str, Any] = tomllib.load(f)
 
         data = migrate(data, config_path)
 
-        assets = data["assets"]
+        assets = data.get("assets")
+        if assets is None:
+            return {}
         if not isinstance(assets, dict):
             raise TypeError(
                 f"{config_path}: `assets` must be a table, got {type(assets)}"
