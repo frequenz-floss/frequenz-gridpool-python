@@ -2,11 +2,19 @@
 
 ## Summary
 
-<!-- Here goes a general summary of what this release is about -->
+This release rounds out `gridpool-cli` for the `assets` config layout and adds
+gridpool enterprise ownership to the config model. The CLI can now generate,
+validate, patch, and query merged config files.
 
 ## Upgrading
 
-<!-- Here goes notes on how to upgrade from previous versions, including deprecations and what they should be replaced with -->
+- `generate-config` now writes the `assets.microgrids` layout and stamps
+  `assets.version`, instead of the legacy layout. Regenerate configs to get the
+  current format; generated files then load back without a migration.
+
+- `generate-config --inplace` refuses legacy-layout files (top-level or
+  `meta`-nested), which it would duplicate rather than edit. Rebuild those from
+  scratch.
 
 ## New Features
 
@@ -29,6 +37,6 @@
 - A config derived from the Assets API now carries each microgrid's
   `enterprise_id`.
 
-## Bug Fixes
-
-<!-- Here goes notable bug fixes that are worth a special mention or explanation -->
+- `generate-config --inplace` refreshes managed values while preserving
+  formatting; `--fill-missing` only adds absent values. Generated patches are
+  validated before writing.
