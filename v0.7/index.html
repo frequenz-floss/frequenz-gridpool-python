@@ -517,6 +517,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#validate-config-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate config files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#look-up-a-gridpools-enterprise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Look up a gridpool's enterprise
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -939,6 +961,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#validate-config-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate config files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#look-up-a-gridpools-enterprise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Look up a gridpool's enterprise
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1034,13 +1078,15 @@ several market areas within one document.</p>
 <li><strong>Architectures:</strong> amd64, arm64</li>
 </ul>
 <h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">¤</a></h2>
-<p>This package ships the <code>gridpool-cli</code> command with three subcommands.</p>
+<p>This package ships the <code>gridpool-cli</code> command with five subcommands.</p>
 <h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">¤</a></h3>
 <p>Set the Assets API credentials before running the CLI:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_URL</span><span class="o">=</span><span class="s2">"grpc://..."</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_AUTH_KEY</span><span class="o">=</span><span class="s2">"..."</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASSETS_API_SIGN_SECRET</span><span class="o">=</span><span class="s2">"..."</span>
 </span></code></pre></div>
+<p><code>FREQUENZ_API_KEY</code> and <code>FREQUENZ_API_SECRET</code> are accepted as fallbacks for
+<code>ASSETS_API_AUTH_KEY</code> and <code>ASSETS_API_SIGN_SECRET</code>.</p>
 <h3 id="print-component-formulas">Print component formulas<a class="headerlink" href="#print-component-formulas" title="Permanent link">¤</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>gridpool-cli<span class="w"> </span>print-formulas<span class="w"> </span>&lt;microgrid_id&gt;
 </span></code></pre></div>
@@ -1089,6 +1135,19 @@ supplied files:</p>
 config can keep the meter-first order of the per-category formulas:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>gridpool-cli<span class="w"> </span>generate-config<span class="w"> </span>&lt;microgrid_id&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span>--prefer-meters-in-component-formulas<span class="w"> </span>&gt;<span class="w"> </span>microgrid.toml
+</span></code></pre></div>
+<h3 id="validate-config-files">Validate config files<a class="headerlink" href="#validate-config-files" title="Permanent link">¤</a></h3>
+<p>Check config files offline, without contacting the Assets API, and exit
+non-zero on the first error, to gate config-repo CI:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>gridpool-cli<span class="w"> </span>validate<span class="w"> </span>microgrid.toml<span class="w"> </span><span class="o">[</span>more.toml<span class="w"> </span>...<span class="o">]</span>
+</span></code></pre></div>
+<p>Each file is validated on its own first, so every record names its own key and
+required fields; the files are then validated merged, for the cross-record
+checks.</p>
+<h3 id="look-up-a-gridpools-enterprise">Look up a gridpool's enterprise<a class="headerlink" href="#look-up-a-gridpools-enterprise" title="Permanent link">¤</a></h3>
+<p>Print the enterprise ID that owns a gridpool, read from the config files
+(merged as one stack); exits non-zero if the gridpool is not declared:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>gridpool-cli<span class="w"> </span>find-enterprise<span class="w"> </span>&lt;gridpool_id&gt;<span class="w"> </span>config.toml<span class="w"> </span><span class="o">[</span>more.toml<span class="w"> </span>...<span class="o">]</span>
 </span></code></pre></div>
 <h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">¤</a></h2>
 <p>If you want to know how to build this project and contribute to it, please
