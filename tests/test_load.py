@@ -32,7 +32,9 @@ from frequenz.gridpool.config._load import (
 def _mock_client() -> MagicMock:
     """Mock an Assets API client for one microgrid: grid -> meter -> PV, + a meter."""
     client = MagicMock(spec=AssetsApiClient)
-    client.get_microgrid = AsyncMock(return_value=MagicMock(location=None))
+    client.get_microgrid = AsyncMock(
+        return_value=MagicMock(location=None, enterprise_id=7)
+    )
     client.list_microgrid_electrical_components = AsyncMock(
         return_value=[
             GridConnectionPoint(
@@ -70,12 +72,25 @@ async def test_load_microgrids_from_api_derives_formulas_and_ids() -> None:
     configs = await _load_microgrids_from_api(_mock_client(), [10])
 
     cfg = configs[10]
+    assert cfg.enterprise_id == 7
     assert cfg.ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
     assert cfg.ctype["pv"].inverter == [4]
     assert cfg.ctype["pv"].meter == [2]
     assert cfg.ctype["grid"].meter == [2, 3]
     # Component types absent from the microgrid are not created.
     assert set(cfg.ctype) == {"grid", "consumption", "pv"}
+
+
+async def test_load_microgrids_from_api_allows_missing_enterprise_id() -> None:
+    """An unassigned enterprise (proto default 0) remains unset."""
+    client = _mock_client()
+    client.get_microgrid = AsyncMock(
+        return_value=MagicMock(location=None, enterprise_id=0)
+    )
+
+    configs = await _load_microgrids_from_api(client, [10])
+
+    assert configs[10].enterprise_id is None
 
 
 async def test_load_microgrids_from_api_honours_the_component_graph_config() -> None:

@@ -15,6 +15,7 @@ from frequenz.client.assets import MarketParticipationType
 from marshmallow import Schema
 from marshmallow_dataclass import dataclass
 
+from ._gridpool import GridpoolConfig
 from ._microgrid import MicrogridConfig
 from ._migrations import _CURRENT_VERSION, migrate
 from ._topology import DeliveryAreaConfig, MarketLocationConfig, RelationConfig
@@ -89,6 +90,9 @@ class AssetsConfig:
     microgrids: dict[int, MicrogridConfig] = field(default_factory=dict)
     """Microgrids, keyed by microgrid ID."""
 
+    gridpools: dict[int, GridpoolConfig] = field(default_factory=dict)
+    """Gridpools, keyed by gridpool ID."""
+
     market_locations: dict[str, MarketLocationConfig] = field(default_factory=dict)
     """Market locations, keyed by their identifier."""
 
@@ -123,6 +127,11 @@ class AssetsConfig:
                 raise ValueError(
                     f"Microgrid ID mismatch: key {mid} != {cfg.microgrid_id}"
                 )
+        for gpid, gridpool in self.gridpools.items():
+            if int(gridpool.gridpool_id) != gpid:
+                raise ValueError(
+                    f"Gridpool ID mismatch: key {gpid} != {gridpool.gridpool_id}"
+                )
 
     def check(self) -> None:
         """Check the document as a whole, once every layer has been merged.
@@ -131,8 +140,9 @@ class AssetsConfig:
             ValueError: If an entry's identifier disagrees with the key it is
                 filed under, a relation names fewer than two sides, its key
                 disagrees with its fields, a gridpool relation names no delivery
-                area, one market location is placed in two of them, or a legacy
-                microgrid gridpool ID disagrees with its relations.
+                area, one market location is placed in two of them, a legacy
+                microgrid gridpool ID disagrees with its relations, or a
+                gridpool's declared and inferred enterprise disagree.
         """
         for key, location in self.market_locations.items():
             if location.id is None:
@@ -143,6 +153,7 @@ class AssetsConfig:
                 )
         self._check_relations()
         self._check_legacy_gridpool_ids()
+        self._check_gridpool_enterprises()
 
     def _check_relations(self) -> None:
         """Check the relations are complete, well-keyed and area-consistent.
@@ -211,6 +222,61 @@ class AssetsConfig:
                     f"Microgrid {microgrid.microgrid_id}: legacy gid "
                     f"{legacy_gid} disagrees with relation gridpools "
                     f"{sorted(relation_gids)}; remove gid when several apply"
+                )
+
+    def _derive_enterprise(self, gridpool_id: int) -> int | None:
+        """Infer a gridpool's enterprise from the microgrids its relations name.
+
+        Args:
+            gridpool_id: The gridpool whose enterprise to infer.
+
+        Returns:
+            The inferred enterprise ID, or `None` if none can be inferred.
+
+        Raises:
+            ValueError: If the related microgrids disagree on the enterprise.
+        """
+        enterprises: set[int] = set()
+        for mid in self.find_microgrids(gridpool_id=gridpool_id):
+            microgrid = self.microgrids.get(mid)
+            if microgrid is not None and microgrid.enterprise_id is not None:
+                enterprises.add(microgrid.enterprise_id)
+        if not enterprises:
+            return None
+        if len(enterprises) > 1:
+            raise ValueError(
+                f"Gridpool {gridpool_id}: its microgrids disagree on the owning "
+                f"enterprise: {sorted(enterprises)}"
+            )
+        return enterprises.pop()
+
+    def _check_gridpool_enterprises(self) -> None:
+        """Check declared and inferable gridpool enterprises agree.
+
+        A gridpool owns one enterprise, so its microgrids must not disagree on
+        it, and a declared `gridpools` entry must match what they imply.
+
+        Raises:
+            ValueError: If a gridpool's microgrids disagree on the enterprise,
+                or a declared enterprise differs from the inferred one.
+        """
+        gridpool_ids = set(self.gridpools) | {
+            relation.gridpool_id
+            for relation in self.relations.values()
+            if relation.gridpool_id is not None
+        }
+        for gpid in gridpool_ids:
+            inferred = self._derive_enterprise(gpid)
+            declared = self.gridpools.get(gpid)
+            if (
+                declared is not None
+                and inferred is not None
+                and declared.enterprise_id != inferred
+            ):
+                raise ValueError(
+                    f"Gridpool {gpid}: declared enterprise "
+                    f"{declared.enterprise_id} disagrees with its microgrids' "
+                    f"enterprise {inferred}"
                 )
 
     def find_relations(
@@ -349,6 +415,18 @@ class AssetsConfig:
                 if relation.microgrid_id is not None
             )
         )
+
+    def find_enterprise(self, gridpool_id: int) -> int | None:
+        """Find the configured enterprise owning `gridpool_id`.
+
+        Args:
+            gridpool_id: The gridpool to look up.
+
+        Returns:
+            The owning enterprise ID, or `None` when the gridpool is not configured.
+        """
+        gridpool = self.gridpools.get(gridpool_id)
+        return gridpool.enterprise_id if gridpool is not None else None
 
     @classmethod
     def _warn_unknown_entities(cls, assets: dict[str, Any], source: Path) -> None:

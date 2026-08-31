@@ -75,7 +75,7 @@ The following platforms are officially supported (tested):
 
 ## CLI
 
-This package ships the `gridpool-cli` command with three subcommands.
+This package ships the `gridpool-cli` command with five subcommands.
 
 ### Setup
 
@@ -86,6 +86,9 @@ export ASSETS_API_URL="grpc://..."
 export ASSETS_API_AUTH_KEY="..."
 export ASSETS_API_SIGN_SECRET="..."
 ```
+
+`FREQUENZ_API_KEY` and `FREQUENZ_API_SECRET` are accepted as fallbacks for
+`ASSETS_API_AUTH_KEY` and `ASSETS_API_SIGN_SECRET`.
 
 ### Print component formulas
 
@@ -169,6 +172,28 @@ config can keep the meter-first order of the per-category formulas:
 ```bash
 gridpool-cli generate-config <microgrid_id> \
     --prefer-meters-in-component-formulas > microgrid.toml
+```
+
+### Validate config files
+
+Check config files offline, without contacting the Assets API, and exit
+non-zero on the first error, to gate config-repo CI:
+
+```bash
+gridpool-cli validate microgrid.toml [more.toml ...]
+```
+
+Each file is validated on its own first, so every record names its own key and
+required fields; the files are then validated merged, for the cross-record
+checks.
+
+### Look up a gridpool's enterprise
+
+Print the enterprise ID that owns a gridpool, read from the config files
+(merged as one stack); exits non-zero if the gridpool is not declared:
+
+```bash
+gridpool-cli find-enterprise <gridpool_id> config.toml [more.toml ...]
 ```
 
 ## Contributing

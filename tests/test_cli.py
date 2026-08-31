@@ -3,6 +3,7 @@
 
 """Tests for the gridpool CLI."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from asyncclick.testing import CliRunner
@@ -28,7 +29,9 @@ _ENV = {
 def _mock_client() -> MagicMock:
     """Mock an Assets API client: grid 1 -> meter 2 -> solar inverter 4."""
     client = MagicMock(spec=AssetsApiClient)
-    client.get_microgrid = AsyncMock(return_value=MagicMock(location=None))
+    client.get_microgrid = AsyncMock(
+        return_value=MagicMock(location=None, enterprise_id=7)
+    )
     client.list_microgrid_electrical_components = AsyncMock(
         return_value=[
             GridConnectionPoint(
@@ -85,10 +88,246 @@ async def test_generate_config_prefer_meters_flips_the_order() -> None:
 
     assert result.exit_code == 0, result.output
     assert (
-        '10.ctype.pv.formula.AC_POWER_ACTIVE = "COALESCE(#2, #4, 0.0)"' in result.output
+        'assets.microgrids.10.ctype.pv.formula.AC_POWER_ACTIVE = "COALESCE(#2, #4, 0.0)"'
+        in result.output
     )
+
+
+async def test_freq_api_env_vars_are_accepted_as_fallbacks() -> None:
+    """`FREQUENZ_API_{KEY,SECRET}` stand in when the `ASSETS_API_*` vars are unset."""
+    env = {
+        "ASSETS_API_URL": "grpc://localhost",
+        "ASSETS_API_AUTH_KEY": None,
+        "ASSETS_API_SIGN_SECRET": None,
+        "FREQUENZ_API_KEY": "freq-key",
+        "FREQUENZ_API_SECRET": "freq-secret",
+    }
+    client = _patched_client()
+    with patch("frequenz.gridpool.cli.__main__.AssetsApiClient", client):
+        result = await CliRunner().invoke(cli, ["print-formulas", "10"], env=env)
+
+    assert result.exit_code == 0, result.output
+    client.assert_called_once_with(
+        "grpc://localhost", auth_key="freq-key", sign_secret="freq-secret"
+    )
+
+
+async def test_partial_assets_credentials_are_not_mixed_with_fallbacks() -> None:
+    """A half-set `ASSETS_API_*` pair is not completed from `FREQUENZ_API_*`."""
+    env = {
+        "ASSETS_API_URL": "grpc://localhost",
+        "ASSETS_API_AUTH_KEY": "key",
+        "ASSETS_API_SIGN_SECRET": None,
+        "FREQUENZ_API_KEY": "freq-key",
+        "FREQUENZ_API_SECRET": "freq-secret",
+    }
+    result = await CliRunner().invoke(cli, ["print-formulas", "10"], env=env)
+
+    assert result.exit_code != 0, result.output
+
+
+async def test_missing_credentials_fail_with_a_readable_message() -> None:
+    """With no credentials set the command exits non-zero and names the vars."""
+    env = {
+        "ASSETS_API_URL": "grpc://localhost",
+        "ASSETS_API_AUTH_KEY": None,
+        "ASSETS_API_SIGN_SECRET": None,
+        "FREQUENZ_API_KEY": None,
+        "FREQUENZ_API_SECRET": None,
+    }
+    result = await CliRunner().invoke(cli, ["print-formulas", "10"], env=env)
+
+    assert result.exit_code != 0
+    assert "FREQUENZ_API_KEY" in result.output
 
 
 def test_graph_config_is_none_without_the_flag() -> None:
     """With no flag no config is built, so the library's defaults apply."""
     assert _graph_config(False) is None
+
+
+async def test_inplace_refuses_to_write_an_invalid_patch() -> None:
+    """A patch that yields invalid TOML must not overwrite the target file."""
+    with CliRunner().isolated_filesystem():
+        original = "assets.microgrids.10.microgrid_id = 10\n"
+        Path("cfg.toml").write_text(original, encoding="utf-8")
+        with (
+            patch("frequenz.gridpool.cli.__main__.AssetsApiClient", _patched_client()),
+            patch(
+                "frequenz.gridpool.cli.__main__.patch_file",
+                return_value="this is = = not valid toml",
+            ),
+        ):
+            result = await CliRunner().invoke(
+                cli,
+                ["generate-config", "10", "--inplace", "--default", "cfg.toml"],
+                env=_ENV,
+            )
+
+        assert result.exit_code != 0, result.output
+        assert "invalid" in result.output.lower()
+        assert Path("cfg.toml").read_text(encoding="utf-8") == original
+
+
+async def test_inplace_refuses_to_write_an_inconsistent_patch() -> None:
+    """A patch that conflicts with its gridpool must not replace the target."""
+    with CliRunner().isolated_filesystem():
+        original = (
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n"
+            "assets.microgrids.10.microgrid_id = 10\n"
+            "assets.relations.G80M10.gridpool_id = 80\n"
+            "assets.relations.G80M10.microgrid_id = 10\n"
+            'assets.relations.G80M10.delivery_area.code = "10YDE-RWENET---I"\n'
+        )
+        Path("cfg.toml").write_text(original, encoding="utf-8")
+        with patch("frequenz.gridpool.cli.__main__.AssetsApiClient", _patched_client()):
+            result = await CliRunner().invoke(
+                cli,
+                ["generate-config", "10", "--inplace", "--default", "cfg.toml"],
+                env=_ENV,
+            )
+
+        assert result.exit_code != 0, result.output
+        assert "disagrees" in result.output
+        assert Path("cfg.toml").read_text(encoding="utf-8") == original
+
+
+async def test_find_enterprise_prints_the_owner() -> None:
+    """The command reads a gridpool's owning enterprise from the config."""
+    with CliRunner().isolated_filesystem():
+        Path("gp.toml").write_text(
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "80", "gp.toml"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "42"
+
+
+async def test_find_enterprise_requires_a_gridpool_entry() -> None:
+    """Related microgrids are not used as a fallback."""
+    with CliRunner().isolated_filesystem():
+        Path("cfg.toml").write_text(
+            "assets.microgrids.10.microgrid_id = 10\n"
+            "assets.microgrids.10.enterprise_id = 7\n"
+            "assets.relations.G80M10.gridpool_id = 80\n"
+            "assets.relations.G80M10.microgrid_id = 10\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "80", "cfg.toml"])
+
+    assert result.exit_code != 0
+    assert "80" in result.output
+
+
+async def test_find_enterprise_skips_consistency_validation() -> None:
+    """Deployment lookup reads the gridpool even if other entries conflict."""
+    with CliRunner().isolated_filesystem():
+        Path("cfg.toml").write_text(
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n"
+            "assets.microgrids.10.microgrid_id = 10\n"
+            "assets.microgrids.10.enterprise_id = 7\n"
+            "assets.relations.G80M10.gridpool_id = 80\n"
+            "assets.relations.G80M10.microgrid_id = 10\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "80", "cfg.toml"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "42"
+
+
+async def test_find_enterprise_fails_for_an_unknown_gridpool() -> None:
+    """A gridpool with no entry exits non-zero with a readable message."""
+    with CliRunner().isolated_filesystem():
+        Path("gp.toml").write_text(
+            "assets.gridpools.80.gridpool_id = 80\n"
+            "assets.gridpools.80.enterprise_id = 42\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["find-enterprise", "99", "gp.toml"])
+
+    assert result.exit_code != 0
+    assert "99" in result.output
+
+
+async def test_validate_accepts_a_valid_stack() -> None:
+    """A well-formed document validates with a zero exit code."""
+    with CliRunner().isolated_filesystem():
+        Path("good.toml").write_text(
+            "[assets.relations.G80M241L10208446344]\n"
+            "gridpool_id = 80\n"
+            "microgrid_id = 241\n"
+            'market_location_id = "10208446344"\n'
+            'delivery_area.code = "10YDE-RWENET---I"\n',
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["validate", "good.toml"])
+
+    assert result.exit_code == 0, result.output
+
+
+async def test_validate_reports_a_bad_eic_code() -> None:
+    """A malformed EIC code fails with a non-zero exit and a readable message."""
+    with CliRunner().isolated_filesystem():
+        Path("bad.toml").write_text(
+            "[assets.relations.G80M241L10208446344]\n"
+            "gridpool_id = 80\n"
+            "microgrid_id = 241\n"
+            'market_location_id = "10208446344"\n'
+            'delivery_area.code = "10YDE-RWENET---X"\n',
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(cli, ["validate", "bad.toml"])
+
+    assert result.exit_code != 0
+    assert "valid EIC code" in result.output
+
+
+async def test_validate_rejects_a_partial_file_even_in_a_stack() -> None:
+    """Each file must stand alone; a partial record is not completed by a merge."""
+    with CliRunner().isolated_filesystem():
+        Path("base.toml").write_text(
+            "[assets.relations.G80M241L10208446344]\n"
+            "gridpool_id = 80\n"
+            "microgrid_id = 241\n"
+            'market_location_id = "10208446344"\n',
+            encoding="utf-8",
+        )
+        Path("override.toml").write_text(
+            "[assets.relations.G80M241L10208446344]\n"
+            'delivery_area.code = "10YDE-RWENET---I"\n',
+            encoding="utf-8",
+        )
+        runner = CliRunner()
+        alone = await runner.invoke(cli, ["validate", "base.toml"])
+        stacked = await runner.invoke(cli, ["validate", "base.toml", "override.toml"])
+
+    assert alone.exit_code != 0, alone.output
+    assert stacked.exit_code != 0, stacked.output
+
+
+async def test_validate_accepts_a_stack_of_complete_files() -> None:
+    """Several files, each self-valid, validate together."""
+    with CliRunner().isolated_filesystem():
+        Path("relation.toml").write_text(
+            "[assets.relations.G80M241L10208446344]\n"
+            "gridpool_id = 80\n"
+            "microgrid_id = 241\n"
+            'market_location_id = "10208446344"\n'
+            'delivery_area.code = "10YDE-RWENET---I"\n',
+            encoding="utf-8",
+        )
+        Path("microgrid.toml").write_text(
+            "assets.microgrids.241.microgrid_id = 241\n",
+            encoding="utf-8",
+        )
+        result = await CliRunner().invoke(
+            cli, ["validate", "relation.toml", "microgrid.toml"]
+        )
+
+    assert result.exit_code == 0, result.output

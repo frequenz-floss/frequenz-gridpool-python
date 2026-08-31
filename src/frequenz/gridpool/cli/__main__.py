@@ -5,11 +5,13 @@
 
 import os
 import tempfile
+import tomllib
 from pathlib import Path
 
 import asyncclick as click
 from frequenz.client.assets import AssetsApiClient
 from frequenz.client.common.microgrid import MicrogridId
+from marshmallow import ValidationError
 
 from frequenz.gridpool import ComponentGraphConfig, ComponentGraphGenerator
 from frequenz.gridpool.cli._dump_config import dump_map
@@ -17,10 +19,35 @@ from frequenz.gridpool.cli._patch_config import patch_file
 from frequenz.gridpool.cli._render_graph import ComponentGraphRenderer, RenderOptions
 from frequenz.gridpool.config import AssetsConfig, load_configs
 
+_LOAD_ERRORS = (ValueError, TypeError, tomllib.TOMLDecodeError, ValidationError)
+"""Exceptions raised when a config file fails to load or validate."""
+
 
 @click.group()
 async def cli() -> None:
     """CLI tool for gridpool functionality."""
+
+
+def _assets_credentials() -> tuple[str, str, str]:
+    """Resolve Assets API URL, auth key and sign secret from the environment.
+
+    `FREQUENZ_API_KEY` and `FREQUENZ_API_SECRET` are accepted as a fallback pair
+    for `ASSETS_API_AUTH_KEY` and `ASSETS_API_SIGN_SECRET`. The key and secret
+    are taken as a whole from one source, never mixed across the two.
+    """
+    url = os.environ.get("ASSETS_API_URL")
+    key = os.environ.get("ASSETS_API_AUTH_KEY")
+    secret = os.environ.get("ASSETS_API_SIGN_SECRET")
+    if not key and not secret:
+        key = os.environ.get("FREQUENZ_API_KEY")
+        secret = os.environ.get("FREQUENZ_API_SECRET")
+    if not url or not key or not secret:
+        raise click.ClickException(
+            "ASSETS_API_URL and auth credentials must be set: "
+            "ASSETS_API_AUTH_KEY (or FREQUENZ_API_KEY) and "
+            "ASSETS_API_SIGN_SECRET (or FREQUENZ_API_SECRET)."
+        )
+    return url, key, secret
 
 
 def _graph_config(prefer_meters: bool) -> ComponentGraphConfig | None:
@@ -55,13 +82,7 @@ async def print_formulas(
     prefer_meters_in_component_formulas: bool,
 ) -> None:
     """Fetch and print component graph formulas for a microgrid."""
-    url = os.environ.get("ASSETS_API_URL")
-    key = os.environ.get("ASSETS_API_AUTH_KEY")
-    secret = os.environ.get("ASSETS_API_SIGN_SECRET")
-    if not url or not key or not secret:
-        raise click.ClickException(
-            "ASSETS_API_URL, ASSETS_API_AUTH_KEY, ASSETS_API_SIGN_SECRET must be set."
-        )
+    url, key, secret = _assets_credentials()
 
     async with AssetsApiClient(
         url,
@@ -90,6 +111,70 @@ async def print_formulas(
             )
 
 
+@cli.command()
+@click.argument(
+    "config_files",
+    nargs=-1,
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+async def validate(config_files: tuple[Path, ...]) -> None:
+    """Validate each config file on its own, then the merged stack.
+
+    Each file must stand alone: every record names its own key and required
+    fields. The merged stack then adds the cross-record checks. Exits non-zero
+    on the first error, to gate CI.
+    """
+    for config_file in config_files:
+        try:
+            AssetsConfig.load_from_files([config_file])
+        except _LOAD_ERRORS as exc:
+            raise click.ClickException(f"{config_file}: {exc}") from exc
+
+    try:
+        config = AssetsConfig.load_from_files(list(config_files))
+    except _LOAD_ERRORS as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(
+        f"OK: {len(config_files)} file(s), {len(config.microgrids)} microgrid(s), "
+        f"{len(config.relations)} relation(s), "
+        f"{len(config.market_locations)} market location(s).",
+        err=True,
+    )
+
+
+@cli.command("find-enterprise")
+@click.argument("gridpool_id", type=int)
+@click.argument(
+    "config_files",
+    nargs=-1,
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+async def find_enterprise(gridpool_id: int, config_files: tuple[Path, ...]) -> None:
+    """Print the enterprise ID owning GRIDPOOL_ID, read from the config files.
+
+    The files are read as one merged stack. The owner is taken from the
+    `gridpools` entry without validating the full document. Exits non-zero if
+    the gridpool is not configured.
+    """
+    try:
+        # The declared `gridpools` entry is the source of truth for ownership,
+        # so read it even from a document whole-document validation would reject.
+        config = AssetsConfig.load_from_files(list(config_files), check=False)
+        enterprise_id = config.find_enterprise(gridpool_id)
+    except _LOAD_ERRORS as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if enterprise_id is None:
+        raise click.ClickException(
+            f"Could not determine the enterprise for gridpool {gridpool_id} "
+            "from the given config(s)."
+        )
+    click.echo(enterprise_id)
+
+
 @cli.command("render-graph")
 @click.argument("microgrid_id", type=int)
 @click.option(
@@ -107,13 +192,7 @@ async def print_formulas(
 )
 async def render_graph(microgrid_id: int, output: str, show: bool) -> None:
     """Render and save a component graph visualization for a microgrid."""
-    url = os.environ.get("ASSETS_API_URL")
-    key = os.environ.get("ASSETS_API_AUTH_KEY")
-    secret = os.environ.get("ASSETS_API_SIGN_SECRET")
-    if not url or not key or not secret:
-        raise click.ClickException(
-            "ASSETS_API_URL, ASSETS_API_AUTH_KEY, ASSETS_API_SIGN_SECRET must be set."
-        )
+    url, key, secret = _assets_credentials()
 
     try:
         async with AssetsApiClient(
@@ -151,9 +230,16 @@ async def render_graph(microgrid_id: int, output: str, show: bool) -> None:
     "--inplace",
     is_flag=True,
     default=False,
-    help="Patch --default in place instead of printing to stdout. Preserves "
-    "existing comments, ordering and formatting in that file; only fills in "
-    "values it is missing. Requires --default.",
+    help="Patch --default in place instead of printing to stdout, refreshing "
+    "the managed values while keeping its comments, ordering and formatting. "
+    "Requires --default.",
+)
+@click.option(
+    "--fill-missing",
+    is_flag=True,
+    default=False,
+    help="With --inplace, only add values --default is missing, leaving the "
+    "values already in it untouched.",
 )
 @click.option(
     "--prefer-meters-in-component-formulas",
@@ -162,11 +248,13 @@ async def render_graph(microgrid_id: int, output: str, show: bool) -> None:
     help="Read the meter before the component in the per-category formulas. "
     "This is the order used before component graph v0.5.0.",
 )
-async def generate_config(
+async def generate_config(  # pylint: disable=too-many-locals
     microgrid_ids: tuple[int, ...],
+    *,
     default_file: Path | None,
     override_file: Path | None,
     inplace: bool,
+    fill_missing: bool,
     prefer_meters_in_component_formulas: bool,
 ) -> None:
     """Generate microgrid config from the Assets API as TOML.
@@ -184,21 +272,17 @@ async def generate_config(
     component graph v0.5.0.
 
     With `--inplace`, `--default` is patched directly instead: candidate values
-    come from the Assets API (with `--override` layered on top), and only
-    leaves `--default` is missing are added, preserving its existing comments,
-    field order and formatting. If no microgrid IDs are given, every microgrid
-    already in `--default` is processed.
+    come from the Assets API (with `--override` layered on top) and refresh the
+    managed values, keeping the file's comments, field order and formatting.
+    With `--fill-missing`, only values `--default` lacks are added. If no
+    microgrid IDs are given, every microgrid already in `--default` is processed.
     """
     if inplace and default_file is None:
         raise click.ClickException("--inplace requires --default.")
+    if fill_missing and not inplace:
+        raise click.ClickException("--fill-missing requires --inplace.")
 
-    url = os.environ.get("ASSETS_API_URL")
-    key = os.environ.get("ASSETS_API_AUTH_KEY")
-    secret = os.environ.get("ASSETS_API_SIGN_SECRET")
-    if not url or not key or not secret:
-        raise click.ClickException(
-            "ASSETS_API_URL, ASSETS_API_AUTH_KEY, ASSETS_API_SIGN_SECRET must be set."
-        )
+    url, key, secret = _assets_credentials()
 
     ids = list(dict.fromkeys(microgrid_ids)) or None
     if inplace and ids is None:
@@ -236,13 +320,25 @@ async def generate_config(
 
     if inplace:
         assert default_file is not None
-        patched = patch_file(default_file, configs)
+        try:
+            patched = patch_file(default_file, configs, fill_missing=fill_missing)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
         fd, tmp_name = tempfile.mkstemp(
             dir=default_file.parent, prefix=f".{default_file.name}."
         )
         try:
             with os.fdopen(fd, "w") as tmp_file:
                 tmp_file.write(patched)
+            # Guard against a patch that corrupts the file (e.g. bad splicing)
+            # before it overwrites the user's config.
+            try:
+                AssetsConfig.load_from_files(Path(tmp_name))
+            except _LOAD_ERRORS as exc:
+                raise click.ClickException(
+                    f"Refusing to write {default_file}: the patched result is "
+                    f"invalid: {exc}"
+                ) from exc
             os.replace(tmp_name, default_file)
         except BaseException:
             os.remove(tmp_name)
