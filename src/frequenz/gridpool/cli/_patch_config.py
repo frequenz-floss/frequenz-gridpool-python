@@ -10,6 +10,7 @@ survive. By default it refreshes the managed leaves, overwriting them; with
 """
 
 from collections.abc import Mapping
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +55,6 @@ def patch_text(
     """
     doc = tomlkit.parse(original)
     _reject_legacy_layout(doc)
-    schema = MicrogridConfig.Schema()
 
     # Leaves needing a whole new sub-table can't be inserted via item assignment
     # without tomlkit falling back to bracket-header syntax, so they are spliced
@@ -63,9 +63,7 @@ def patch_text(
 
     for microgrid_id, cfg in configs.items():
         mid = str(microgrid_id)
-        dumped = schema.dump(cfg)
-        assert isinstance(dumped, dict)
-        leaves = _iter_leaves([], dumped)
+        leaves = _iter_leaves([], asdict(cfg))
         if not leaves:
             continue
 
