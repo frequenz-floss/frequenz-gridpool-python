@@ -8,6 +8,14 @@ validate, patch, and query merged config files.
 
 ## Upgrading
 
+- The legacy config layouts are no longer migrated on load: top-level microgrid
+  IDs and `meta`-nested microgrid fields are gone. A file with no `assets` table
+  now loads as empty and contributes nothing to a merge, rather than having its
+  top-level keys read as microgrid IDs. This lets a mixed list of files (some
+  carrying an `[app]` table for their own config, some an `assets` table) be
+  passed to `AssetsConfig.load_from_files` / `load_configs`, which reads only the
+  `assets`-bearing ones. Rebuild any legacy-layout files with `generate-config`.
+
 - `generate-config` now writes the `assets.microgrids` layout and stamps
   `assets.version`, instead of the legacy layout. Regenerate configs to get the
   current format; generated files then load back without a migration.
@@ -40,3 +48,10 @@ validate, patch, and query merged config files.
 - `generate-config --inplace` refreshes managed values while preserving
   formatting; `--fill-missing` only adds absent values. Generated patches are
   validated before writing.
+
+## Bug Fixes
+
+- Config files with validity periods now load under marshmallow 3, not only
+  marshmallow 4. `tomllib` yields native `datetime` objects, which marshmallow
+  3's `DateTime` field rejected. `marshmallow` is now a direct dependency so the
+  minimum-version test exercises this path.

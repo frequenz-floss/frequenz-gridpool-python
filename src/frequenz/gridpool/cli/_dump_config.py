@@ -17,6 +17,7 @@ escaping, key-quoting, list/number/datetime formatting) is delegated to
 fields are done here, since TOML has no null and `tomlkit` rejects it.
 """
 
+from dataclasses import asdict
 from typing import Any
 
 import tomlkit
@@ -86,13 +87,10 @@ def dump_map(configs: dict[int, MicrogridConfig]) -> str:
         The TOML representation as a string, with one blank line between
         microgrids and entries sorted by numeric microgrid ID.
     """
-    schema = MicrogridConfig.Schema()
     doc = tomlkit.document()
     doc.append(tomlkit.key(["assets", "version"]), _CURRENT_VERSION)
     for mid in sorted(configs):
-        dumped = schema.dump(configs[mid])
-        assert isinstance(dumped, dict)
-        leaves = _iter_leaves([*_MICROGRID_PREFIX, str(mid)], dumped)
+        leaves = _iter_leaves([*_MICROGRID_PREFIX, str(mid)], asdict(configs[mid]))
         if not leaves:
             continue
         doc.add(tomlkit.nl())

@@ -11,31 +11,6 @@ from frequenz.gridpool.config import AssetsConfig
 from frequenz.gridpool.config._migrations import _CURRENT_VERSION, migrate
 
 
-def test_migrate_nests_top_level_microgrids() -> None:
-    """A v0 top-level document is nested under `assets.microgrids` and stamped."""
-    raw = {"1": {"microgrid_id": 1, "name": "Grid"}}
-
-    migrated = migrate(raw, Path("v0.toml"))
-
-    assert migrated == {
-        "assets": {
-            "microgrids": {"1": {"microgrid_id": 1, "name": "Grid"}},
-            "version": _CURRENT_VERSION,
-        }
-    }
-
-
-def test_migrate_lifts_nested_meta() -> None:
-    """A microgrid nesting fields under `meta` has them lifted onto the entry."""
-    raw = {
-        "assets": {"microgrids": {"1": {"meta": {"microgrid_id": 1, "name": "Grid"}}}}
-    }
-
-    migrated = migrate(raw, Path("meta.toml"))
-
-    assert migrated["assets"]["microgrids"]["1"] == {"microgrid_id": 1, "name": "Grid"}
-
-
 def test_migrate_is_a_noop_on_a_current_document() -> None:
     """A current document passes through unchanged."""
     raw = {
@@ -46,20 +21,6 @@ def test_migrate_is_a_noop_on_a_current_document() -> None:
     }
 
     assert migrate(raw, Path("current.toml")) == raw
-
-
-def test_migrate_rejects_mixed_layout_at_current_version() -> None:
-    """Layout validation still runs when a document declares the current version."""
-    raw = {
-        "assets": {
-            "version": _CURRENT_VERSION,
-            "microgrids": {"1": {"microgrid_id": 1}},
-        },
-        "2": {"microgrid_id": 2},
-    }
-
-    with pytest.raises(ValueError, match="outside `assets`"):
-        migrate(raw, Path("mixed.toml"))
 
 
 def test_migrate_rejects_a_newer_version() -> None:
@@ -80,12 +41,30 @@ def test_migrate_rejects_a_newer_version() -> None:
     assert raw["assets"]["version"] == future_version
 
 
-def test_v0_top_level_file_loads(tmp_path: Path) -> None:
-    """A v0 top-level file still loads through the public loader."""
-    path = tmp_path / "v0.toml"
-    path.write_text('1.microgrid_id = 1\n1.name = "Grid"\n')
+def test_file_without_assets_loads_empty(tmp_path: Path) -> None:
+    """A file with no `assets` table loads empty and contributes nothing to a merge."""
+    other = tmp_path / "app.toml"
+    other.write_text('[app]\nname = "consumer"\n')
+    real = tmp_path / "assets.toml"
+    real.write_text(
+        'assets.microgrids.1.microgrid_id = 1\nassets.microgrids.1.name = "Grid"\n'
+    )
+
+    assert AssetsConfig.load_from_files(other).microgrids == {}
+
+    merged = AssetsConfig.load_from_files([other, real])
+    assert merged.microgrids[1].name == "Grid"
+
+
+def test_file_with_app_and_assets_reads_only_assets(tmp_path: Path) -> None:
+    """A sibling `[app]` table next to `assets` is ignored; only `assets` is read."""
+    path = tmp_path / "mixed.toml"
+    path.write_text(
+        "assets.microgrids.1.microgrid_id = 1\n"
+        'assets.microgrids.1.name = "Grid"\n\n'
+        '[app]\nname = "consumer"\n'
+    )
 
     config = AssetsConfig.load_from_files(path)
 
     assert config.microgrids[1].name == "Grid"
-    assert config.version == _CURRENT_VERSION
