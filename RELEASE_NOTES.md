@@ -13,7 +13,7 @@
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+- Automatically generate component formulas for the `AC_ENERGY_ACTIVE`, `AC_ENERGY_ACTIVE_CONSUMED`, and `AC_ENERGY_ACTIVE_DELIVERED` metrics when deriving microgrid configuration from the Assets API, in addition to the existing `AC_POWER_ACTIVE` formulas.
 
 ## Bug Fixes
 
