@@ -33,6 +33,13 @@ from ._microgrid import (
 
 _logger = logging.getLogger(__name__)
 
+_AUTO_FORMULA_METRICS = (
+    "AC_POWER_ACTIVE",
+    "AC_ENERGY_ACTIVE",
+    "AC_ENERGY_ACTIVE_CONSUMED",
+    "AC_ENERGY_ACTIVE_DELIVERED",
+)
+
 
 async def load_configs(
     default_files: str | Path | list[str | Path] | None = None,
@@ -232,7 +239,7 @@ def _derive_component_configs(
 ) -> dict[str, ComponentTypeConfig]:
     """Build the component-type configs for a microgrid from its graph.
 
-    Derives, per component type, the `AC_POWER_ACTIVE` formula and the
+    Derives, per component type, formulas for active power and energy, and the
     meter/inverter/component ID lists straight from the component graph. A
     component type only appears in the result if the graph yields a non-zero
     formula or at least one ID for it.
@@ -257,7 +264,7 @@ def _derive_component_configs(
                 return None
         except ValueError:
             pass
-        return {"AC_POWER_ACTIVE": derived}
+        return {metric: derived for metric in _AUTO_FORMULA_METRICS}
 
     configs: dict[str, ComponentTypeConfig] = {
         "consumption": ComponentTypeConfig(
