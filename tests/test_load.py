@@ -28,6 +28,18 @@ from frequenz.gridpool.config._load import (
     _load_microgrids_from_api,
 )
 
+_FORMULA_METRICS = (
+    "AC_POWER_ACTIVE",
+    "AC_ENERGY_ACTIVE",
+    "AC_ENERGY_ACTIVE_CONSUMED",
+    "AC_ENERGY_ACTIVE_DELIVERED",
+)
+
+
+def _formulas(expression: str) -> dict[str, str]:
+    """Build the expected auto-generated formulas for an expression."""
+    return {metric: expression for metric in _FORMULA_METRICS}
+
 
 def _mock_client() -> MagicMock:
     """Mock an Assets API client for one microgrid: grid -> meter -> PV, + a meter."""
@@ -73,7 +85,7 @@ async def test_load_microgrids_from_api_derives_formulas_and_ids() -> None:
 
     cfg = configs[10]
     assert cfg.enterprise_id == 7
-    assert cfg.ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
+    assert cfg.ctype["pv"].formula == _formulas("COALESCE(#4, #2, 0.0)")
     assert cfg.ctype["pv"].inverter == [4]
     assert cfg.ctype["pv"].meter == [2]
     assert cfg.ctype["grid"].meter == [2, 3]
@@ -105,7 +117,7 @@ async def test_load_microgrids_from_api_honours_the_component_graph_config() -> 
 
     # Meter first, the opposite of the default order asserted above.
     ctype = configs[10].ctype
-    assert ctype["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"}
+    assert ctype["pv"].formula == _formulas("COALESCE(#2, #4, 0.0)")
 
 
 async def test_load_configs_forwards_the_component_graph_config() -> None:
@@ -120,9 +132,7 @@ async def test_load_configs_forwards_the_component_graph_config() -> None:
         )
     ).microgrids
 
-    assert configs[10].ctype["pv"].formula == {
-        "AC_POWER_ACTIVE": "COALESCE(#2, #4, 0.0)"
-    }
+    assert configs[10].ctype["pv"].formula == _formulas("COALESCE(#2, #4, 0.0)")
 
 
 async def test_load_configs_rejects_a_component_graph_config_without_a_client() -> None:
@@ -197,7 +207,7 @@ async def test_derive_component_configs_builds_formulas_and_ids() -> None:
 
     configs = _derive_component_configs(graph)
 
-    assert configs["pv"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
+    assert configs["pv"].formula == _formulas("COALESCE(#4, #2, 0.0)")
     assert configs["pv"].inverter == [4]
     assert configs["pv"].meter == [2]
     assert configs["grid"].meter == [2, 3]
