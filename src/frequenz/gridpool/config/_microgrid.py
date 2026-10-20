@@ -13,7 +13,9 @@ from marshmallow_dataclass import dataclass
 
 from ._fields import toml_datetime_metadata
 
-ComponentType = Literal["grid", "pv", "battery", "consumption", "chp", "ev"]
+ComponentType = Literal[
+    "grid", "pv", "battery", "consumption", "generation", "chp", "ev"
+]
 """Valid component types."""
 
 ComponentCategory = Literal["meter", "inverter", "component"]
