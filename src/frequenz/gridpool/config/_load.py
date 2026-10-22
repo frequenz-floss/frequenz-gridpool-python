@@ -266,6 +266,12 @@ def _derive_component_configs(
             component=None,
             formula=as_formula(graph.consumer_formula()),
         ),
+        "generation": ComponentTypeConfig(
+            meter=None,
+            inverter=None,
+            component=None,
+            formula=as_formula(graph.producer_formula()),
+        ),
         "grid": ComponentTypeConfig(
             meter=grid_meter_ids(graph) or None,
             inverter=None,

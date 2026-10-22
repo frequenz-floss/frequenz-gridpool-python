@@ -77,8 +77,11 @@ async def test_load_microgrids_from_api_derives_formulas_and_ids() -> None:
     assert cfg.ctype["pv"].inverter == [4]
     assert cfg.ctype["pv"].meter == [2]
     assert cfg.ctype["grid"].meter == [2, 3]
+    assert cfg.ctype["generation"].formula == {
+        "AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"
+    }
     # Component types absent from the microgrid are not created.
-    assert set(cfg.ctype) == {"grid", "consumption", "pv"}
+    assert set(cfg.ctype) == {"grid", "consumption", "generation", "pv"}
 
 
 async def test_load_microgrids_from_api_allows_missing_enterprise_id() -> None:
@@ -201,4 +204,5 @@ async def test_derive_component_configs_builds_formulas_and_ids() -> None:
     assert configs["pv"].inverter == [4]
     assert configs["pv"].meter == [2]
     assert configs["grid"].meter == [2, 3]
-    assert set(configs) == {"grid", "consumption", "pv"}
+    assert configs["generation"].formula == {"AC_POWER_ACTIVE": "COALESCE(#4, #2, 0.0)"}
+    assert set(configs) == {"grid", "consumption", "generation", "pv"}

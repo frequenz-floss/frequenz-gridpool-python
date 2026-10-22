@@ -13,7 +13,9 @@
 
 ## New Features
 
-<!-- Here goes the main new features and examples or instructions on how to use them -->
+- `generate-config` now derives a `generation` component type, with its
+  `AC_POWER_ACTIVE` formula taken from `ComponentGraph.producer_formula()`, so
+  the aggregated producer power is emitted alongside `consumption`.
 
 ## Bug Fixes
 
